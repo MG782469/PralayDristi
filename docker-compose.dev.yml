@@ -1,0 +1,30 @@
+# Local development infrastructure. The API itself runs with `dotnet run` against these.
+#   docker compose -f docker-compose.dev.yml up -d
+# Postgres here is only a stand-in until the Neon connection string is filled in appsettings.json.
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: pralay-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: pralay-postgres
+    environment:
+      POSTGRES_DB: pralaydrishti
+      POSTGRES_USER: pralay
+      POSTGRES_PASSWORD: pralay
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  pg-data:
