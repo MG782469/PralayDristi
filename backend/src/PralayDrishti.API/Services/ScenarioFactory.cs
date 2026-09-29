@@ -1,3 +1,5 @@
+using PralayDrishti.Application.Common.Models;
+using PralayDrishti.Domain.Enums;
 using System.Text.Json;
 using PralayDrishti.API.Data;
 using PralayDrishti.Infrastructure.Engine.Hydraulics;
@@ -52,7 +54,7 @@ public static class ScenarioFactory
     {
         Id = Guid.NewGuid(),
         Name = spec.Name,
-        Status = RunStatus.Queued,
+        Status = PralayDrishti.API.Data.RunStatus.Queued,
         Stage = "Queued",
         CreatedUtc = DateTime.UtcNow,
         SpecJson = JsonSerializer.Serialize(spec, RunArchive.Json),

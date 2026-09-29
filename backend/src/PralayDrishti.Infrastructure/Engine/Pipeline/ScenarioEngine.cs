@@ -1,3 +1,5 @@
+using PralayDrishti.Application.Common.Models;
+using PralayDrishti.Domain.Enums;
 using System.Diagnostics;
 using PralayDrishti.Infrastructure.Engine.Analysis;
 using PralayDrishti.Infrastructure.Engine.Geo;
@@ -61,7 +63,7 @@ public sealed class ScenarioEngine
             if (spec.NaturalDam is null || spec.NaturalDam.DebrisPolygon.Count < 3)
                 throw new ArgumentException("natural dam mode needs a debris polygon");
             nat = NaturalDamAnalyzer.Analyze(dem, new NaturalDamAnalyzer.Request(
-                spec.NaturalDam.Ring, spec.NaturalDam.CrestElevation, spec.NaturalDam.HeightAboveBed,
+                spec.NaturalDam.Ring(), spec.NaturalDam.CrestElevation, spec.NaturalDam.HeightAboveBed,
                 spec.NaturalDam.CurrentLakeLevel));
             log.AddRange(nat.Notes);
             damCell = nat.BlockageRiverCell;
@@ -88,7 +90,7 @@ public sealed class ScenarioEngine
         }
         else
         {
-            damCell = Hydrology.SnapToRiver(dem, routing.Accumulation, damSpec.Location, 1000);
+            damCell = Hydrology.SnapToRiver(dem, routing.Accumulation, damSpec.Location(), 1000);
             bed = dem.Z[damCell];
             crest = bed + damSpec.HeightM;
             hw = damSpec.HwOrDefault;
@@ -412,7 +414,7 @@ public sealed class ScenarioEngine
         double bestDist = double.MaxValue;
         for (int k = 3; k < path.Count; k++)
         {
-            double dist = dem.CellCenter(path[k]).DistanceTo(d.Location);
+            double dist = dem.CellCenter(path[k]).DistanceTo(d.Location());
             if (dist < bestDist) { bestDist = dist; best = k; }
         }
         if (best < 0 || bestDist > 2500)

@@ -14,3 +14,16 @@ public enum AlertSeverity { Moderate, Severe, Extreme }
 public enum AlertStatus { Exercise, Test, Actual }
 
 public enum DamCategory { Reservoir, NaturalLake, Glacial, Transboundary }
+
+public enum DamType
+{
+    Earthfill,
+    Rockfill,
+    Concrete,
+    LandslideDam,   // natural blockage: landslide / debris
+    MoraineDam      // glacial lake (GLOF) - South Lhonak type
+}
+
+public enum FailureMode { Overtopping, Piping, Instantaneous }
+
+public enum BreachMethod { Froehlich2008, MacDonaldLangridgeMonopolis, CostaSchuster, UserDefined }

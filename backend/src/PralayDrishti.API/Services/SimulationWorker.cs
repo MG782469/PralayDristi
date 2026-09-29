@@ -1,3 +1,4 @@
+using PralayDrishti.Application.Common.Models;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -75,7 +76,7 @@ public sealed class SimulationWorker : BackgroundService
 
             var center = spec.Mode == ScenarioMode.NaturalDam && spec.NaturalDam?.DebrisPolygon.Count > 0
                 ? new GeoPoint(spec.NaturalDam.DebrisPolygon.Average(p => p[0]), spec.NaturalDam.DebrisPolygon.Average(p => p[1]))
-                : spec.Dam.Location;
+                : spec.Dam.Location();
             var dem = await _dem.ForAreaAsync(center, spec.DownstreamKm, spec.UpstreamKm, spec.DemZoom, ct);
 
             await Progress(id, "Loading exposure (settlements, bridges, roads)", 0.04);

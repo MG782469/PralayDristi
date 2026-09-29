@@ -11,7 +11,7 @@ public class Dam
     public string State { get; set; } = "";
     public double Lat { get; set; }
     public double Lon { get; set; }
-    public string Type { get; set; } = "Earthfill";
+    public DamType Type { get; set; } = DamType.Earthfill;
     public double HeightM { get; set; }
     public double GrossStorageMcm { get; set; }
     public double CrestLengthM { get; set; }

@@ -1,3 +1,4 @@
+using PralayDrishti.Application.Common.Models;
 using Microsoft.AspNetCore.SignalR;
 using PralayDrishti.API.Data;
 using PralayDrishti.API.Hubs;

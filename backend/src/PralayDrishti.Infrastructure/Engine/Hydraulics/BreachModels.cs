@@ -1,17 +1,6 @@
+using PralayDrishti.Domain.Enums;
+
 namespace PralayDrishti.Infrastructure.Engine.Hydraulics;
-
-public enum DamType
-{
-    Earthfill,
-    Rockfill,
-    Concrete,
-    LandslideDam,   // natural blockage: landslide / debris
-    MoraineDam      // glacial lake (GLOF) - South Lhonak type
-}
-
-public enum FailureMode { Overtopping, Piping, Instantaneous }
-
-public enum BreachMethod { Froehlich2008, MacDonaldLangridgeMonopolis, CostaSchuster, UserDefined }
 
 /// <summary>Final breach geometry + formation time. Widths in metres, time in seconds.</summary>
 public sealed record BreachGeometry(
