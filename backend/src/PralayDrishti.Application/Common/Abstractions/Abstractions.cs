@@ -75,7 +75,7 @@ public interface IFloodSimulationEngine
 public interface IResultStore
 {
     bool Exists(Guid runId);
-    Task<JsonPayload?> GetDetailAsync(Guid runId, KeyNumbersDto? numbers, CancellationToken ct = default);
+    Task<JsonPayload?> GetDetailAsync(Guid runId, RunSummaryDto summary, CancellationToken ct = default);
     Task<JsonPayload?> GetProfileAsync(Guid runId, CancellationToken ct = default);
     Task<JsonPayload?> SamplePointAsync(Guid runId, double lon, double lat, CancellationToken ct = default);
     void Delete(Guid runId);

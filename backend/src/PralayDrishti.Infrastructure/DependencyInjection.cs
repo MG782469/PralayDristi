@@ -9,6 +9,7 @@ using PralayDrishti.Infrastructure.Identity;
 using PralayDrishti.Infrastructure.Persistence;
 using PralayDrishti.Infrastructure.Persistence.Repositories;
 using PralayDrishti.Infrastructure.Persistence.Seed;
+using PralayDrishti.Infrastructure.Services;
 
 namespace PralayDrishti.Infrastructure;
 
@@ -19,6 +20,40 @@ public static partial class DependencyInjection
         services.AddPersistence(config, env);
         services.AddIdentityServices(config);
         services.AddCachingAndJobs(config);
+        services.AddEngine(config, env);
+        return services;
+    }
+
+    public static IServiceCollection AddEngine(this IServiceCollection services, IConfiguration config, IHostEnvironment env)
+    {
+        var opt = config.GetSection("PralayDrishti").Get<AppOptions>() ?? new AppOptions();
+        string dataDir = Path.IsPathRooted(opt.DataDir) ? opt.DataDir : Path.Combine(env.ContentRootPath, opt.DataDir);
+        services.AddSingleton(opt);
+        services.AddSingleton(new DataPaths(dataDir));
+
+        services.AddHttpClient("tiles", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(30);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("PralayDrishti/1.0");
+        });
+        services.AddHttpClient("overpass", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(120);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("PralayDrishti/1.0 (dam-break decision support)");
+        });
+
+        services.AddSingleton<DemProvider>();
+        services.AddSingleton<IDemProvider>(sp => sp.GetRequiredService<DemProvider>());
+        services.AddSingleton<ExposureProvider>();
+        services.AddSingleton<IExposureProvider>(sp => sp.GetRequiredService<ExposureProvider>());
+        services.AddSingleton<ResultStore>();
+        services.AddSingleton<IResultStore>(sp => sp.GetRequiredService<ResultStore>());
+        services.AddSingleton<IFloodSimulationEngine, FloodSimulationEngine>();
+        services.AddSingleton<IExportService, ExportService>();
+        services.AddScoped<IMapRenderer, MapRenderer>();
+        services.AddSingleton<IHydraulicAnalysis, HydraulicAnalysis>();
+        services.AddSingleton<IValidationBenchmarks, ValidationBenchmarks>();
+        services.AddSingleton<IFileStorage, FileStorage>();
         return services;
     }
 
