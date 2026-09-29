@@ -117,6 +117,10 @@ public sealed class ResultStore : IResultStore
         return Task.FromResult<JsonPayload?>(new JsonPayload(JsonSerializer.Serialize(result, Json)));
     }
 
+    public IReadOnlyList<Guid> ListStoredRunIds() =>
+        Directory.GetDirectories(_paths.Runs).Select(d => Guid.TryParseExact(Path.GetFileName(d), "N", out var g) ? g : Guid.Empty)
+            .Where(g => g != Guid.Empty).ToList();
+
     public void Delete(Guid runId)
     {
         lock (_gate)

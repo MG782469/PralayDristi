@@ -100,6 +100,8 @@ public sealed class FloodSimulationEngine : IFloodSimulationEngine
             new CapAlertBuilder.Options(Status: status.ToString(), Probabilistic: probabilistic || o.Ensemble != null));
     }
 
+    public AlertDraft DraftAlert(Guid runId) => Draft(_store.Get(runId) ?? throw new NotFoundException("Run results", runId));
+
     public ScenarioSpec DefaultScenario(Dam d, IReadOnlyList<Dam> register, bool cascade)
     {
         var spec = new ScenarioSpec

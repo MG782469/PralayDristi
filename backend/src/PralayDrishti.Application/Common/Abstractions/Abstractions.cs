@@ -68,6 +68,9 @@ public interface IFloodSimulationEngine
     /// <summary>CAP 1.2 XML for a finished run.</summary>
     string BuildCap(Guid runId, AlertStatus status, bool probabilistic);
 
+    /// <summary>Headline / severity / people for an alert about a finished run.</summary>
+    AlertDraft DraftAlert(Guid runId);
+
     /// <summary>Natural-dam scenario for a detected lake: estimates level / volume and places the blockage.</summary>
     Task<(ScenarioSpec Spec, double LevelM, double VolumeMcm, string Notes)> ScenarioForLakeAsync(LakeDetection lake, CancellationToken ct);
 }
@@ -78,6 +81,7 @@ public interface IResultStore
     Task<JsonPayload?> GetDetailAsync(Guid runId, RunSummaryDto summary, CancellationToken ct = default);
     Task<JsonPayload?> GetProfileAsync(Guid runId, CancellationToken ct = default);
     Task<JsonPayload?> SamplePointAsync(Guid runId, double lon, double lat, CancellationToken ct = default);
+    IReadOnlyList<Guid> ListStoredRunIds();
     void Delete(Guid runId);
 }
 
@@ -132,4 +136,13 @@ public interface IFileStorage
     /// <summary>Lake detections dropped by the GEE script (or copied over an air gap); returns and archives them.</summary>
     IReadOnlyList<(string Name, string Json)> TakeOutbox();
     long TerrainCacheBytes();
+}
+
+/// <summary>What the deployment looks like right now (shown on the Data &amp; system page).</summary>
+public interface IEnvironmentInfo
+{
+    bool Offline { get; }
+    bool OsmEnabled { get; }
+    bool Delft3DConfigured { get; }
+    bool RedisConnected { get; }
 }

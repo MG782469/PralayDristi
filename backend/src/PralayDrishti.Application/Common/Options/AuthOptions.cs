@@ -14,3 +14,10 @@ public sealed class HangfireJobOptions
     public int SimulationWorkers { get; set; } = 1;
     public string DashboardPath { get; set; } = "/hangfire";
 }
+
+public sealed class LakeWatchOptions
+{
+    public const string Section = "PralayDrishti:LakeWatch";
+    public bool Enabled { get; set; } = true;
+    public bool AutoSimulate { get; set; } = true;
+}

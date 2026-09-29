@@ -24,7 +24,15 @@ public static class DependencyInjection
         });
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
         services.AddScoped<AuthService>();
+        services.AddScoped<RunFactory>();
+        services.AddScoped<AlertService>();
+        services.AddScoped<SimulationRunService>();
+        services.AddScoped<LakeToAlertService>();
+        services.AddScoped<AtlasService>();
+        services.AddTransient<RunSimulationJob>();
+        services.AddTransient<LakeWatchJob>();
         services.AddTransient<RefreshTokenCleanupJob>();
+        services.AddTransient<ResultsRetentionJob>();
 
         return services;
     }

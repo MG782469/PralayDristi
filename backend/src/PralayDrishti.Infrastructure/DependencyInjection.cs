@@ -54,6 +54,7 @@ public static partial class DependencyInjection
         services.AddSingleton<IHydraulicAnalysis, HydraulicAnalysis>();
         services.AddSingleton<IValidationBenchmarks, ValidationBenchmarks>();
         services.AddSingleton<IFileStorage, FileStorage>();
+        services.AddSingleton<IEnvironmentInfo, EnvironmentInfo>();
         return services;
     }
 
