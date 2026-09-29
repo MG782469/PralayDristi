@@ -1,0 +1,17 @@
+bin/
+obj/
+node_modules/
+dist/
+.vs/
+*.user
+data/runs/
+data/cache/
+data/uploads/
+data/models/
+data/gee_outbox/processed/
+data/*.db
+data/*.db-*
+docs/slides/assets/asc/
+docs/slides/assets/*.zip
+docs/slides/assets/run.json
+.superpowers/

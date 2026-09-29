@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>JalPrahari - Slide 3 - Technical Approach</title>
+<style>
+  @page { size: 1920px 652px; margin: 0; }
+  :root { --navy: #1e2a78; --ink: #111827; --text: #374151; --green: #15803d; --border: #d6dae1; --chip: #eef2ff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 652px; background: #fff; overflow: hidden; }
+  body { font-family: 'Segoe UI', Inter, Arial, sans-serif; color: var(--text); padding: 12px 26px 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1 { font-size: 29px; font-weight: 700; color: var(--ink); letter-spacing: -0.2px; }
+  h1 span { color: var(--green); }
+  .label { font-size: 14px; font-weight: 700; letter-spacing: 1.6px; color: var(--navy); margin: 8px 0 6px; }
+  .label small { font-weight: 500; letter-spacing: 0; color: #6b7280; font-size: 12px; }
+
+  .flow { display: flex; align-items: stretch; height: 262px; }
+  .card { border: 1px solid var(--border); border-radius: 10px; background: #fff; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,.06); position: relative; }
+  .card .img { height: 158px; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #eef0f3; position: relative; }
+  .card .img img { width: 100%; height: 100%; object-fit: cover; }
+  .card .img img.contain { object-fit: contain; }
+  .card .body { padding: 6px 10px 8px; }
+  .card h4 { font-size: 15.5px; color: var(--ink); display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .card p { font-size: 12.3px; line-height: 1.32; color: #4b5563; margin-top: 2px; }
+  .n { flex: 0 0 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .card.hl { border: 2px solid #16a34a; }
+  .card.hl .n { background: #15803d; }
+  .card.final { border: 2px solid var(--navy); }
+  .src { position: absolute; top: 6px; left: 6px; font-size: 10px; background: rgba(255,255,255,.9); color: #374151; border-radius: 4px; padding: 1px 5px; }
+  .arr { flex: 0 0 22px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 24px; padding-bottom: 40px; }
+  .arr.g { color: var(--green); flex-basis: 64px; flex-direction: column; font-size: 12px; font-weight: 700; }
+  .arr.g svg { width: 50px; height: 18px; }
+  .legend { display: flex; gap: 3px; margin-top: 4px; }
+  .legend i { flex: 1; height: 7px; border-radius: 2px; }
+
+  .illus { height: 158px; display: grid; place-items: center; background: #f8fafc; border-bottom: 1px solid #eef0f3; }
+  .icons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 6px; padding: 8px; width: 100%; }
+  .ib { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10.5px; color: #374151; text-align: center; line-height: 1.1; }
+  .ib .c { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; }
+  .ib svg { width: 20px; height: 20px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .files { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px; width: 100%; }
+  .file { border: 1.5px solid; border-radius: 5px; padding: 4px 6px; font-size: 11.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; background: #fff; }
+  .file small { font-weight: 500; color: #6b7280; font-size: 10px; }
+
+  .bottom { display: grid; grid-template-columns: 590px 470px 380px 1fr; gap: 12px; }
+  .panel { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px 9px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.05); height: 240px; overflow: hidden; }
+  .techrow { display: grid; grid-template-columns: 30px 64px 1fr; align-items: center; gap: 7px; padding: 4px 0; border-bottom: 1px dashed #eceef2; }
+  .techrow:last-child { border-bottom: 0; }
+  .ti { width: 30px; height: 30px; border-radius: 8px; background: var(--chip); display: grid; place-items: center; }
+  .ti svg { width: 18px; height: 18px; stroke: var(--navy); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .techrow b { font-size: 13px; color: var(--ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11.3px; padding: 2px 7px; border-radius: 999px; background: #f3f4f6; color: #1f2937; border: 1px solid #e5e7eb; white-space: nowrap; }
+  .chip.k { background: #eef2ff; border-color: #c7d2fe; color: #1e2a78; font-weight: 600; }
+  .chip.g { background: #ecfdf5; border-color: #bbf7d0; color: #166534; font-weight: 600; }
+
+  .hybrid { position: relative; height: 150px; border-radius: 8px; overflow: hidden; background: #f8fafc; }
+  .hybrid img { width: 100%; height: 100%; object-fit: fill; }
+  .zone { position: absolute; top: 0; bottom: 0; padding: 6px 8px; font-size: 12px; font-weight: 700; }
+  .zone > span { background: rgba(255,255,255,.9); border-radius: 3px; padding: 0 4px; }
+  .zone.sph { left: 0; width: 22%; background: rgba(21,128,61,.18); border-right: 2px dashed #15803d; color: #14532d; }
+  .zone.swe { left: 22%; right: 0; color: #1e3a8a; padding-left: 14px; }
+  .zone small { display: block; background: rgba(255,255,255,.85); border-radius: 3px; padding: 1px 3px; margin-top: 2px; font-weight: 500; font-size: 10.5px; color: #1f2937; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 7px; }
+  .fact { background: #f8fafc; border: 1px solid #eef0f3; border-radius: 6px; padding: 4px 8px; font-size: 11.5px; line-height: 1.3; }
+  .fact b { color: var(--ink); }
+  .formula { font-family: 'Cambria Math', 'Times New Roman', serif; font-weight: 700; color: var(--navy); font-size: 14px; }
+
+  .loop { position: relative; height: 220px; }
+  .node { position: absolute; width: 132px; text-align: center; font-size: 11.3px; line-height: 1.25; color: #374151; }
+  .node .c { width: 46px; height: 46px; margin: 0 auto 3px; border-radius: 50%; display: grid; place-items: center; }
+  .node .c svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .node b { color: var(--ink); font-size: 12px; display: block; }
+  .loopsvg { position: absolute; inset: 0; }
+  .center-note { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 11px; color: #15803d; font-weight: 700; line-height: 1.2; }
+  .center-note span { display: block; font-size: 20px; }
+
+  .val img { width: 100%; height: 118px; object-fit: contain; }
+  .rung { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 7px; font-size: 12.3px; padding: 4px 0; }
+  .rung .num { width: 20px; height: 20px; border-radius: 50%; background: #15803d; color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .rung b { color: var(--ink); }
+  .res { font-family: Consolas, monospace; font-size: 11.5px; font-weight: 700; color: var(--green); background: #ecfdf5; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+  .res.p { color: #92400e; background: #fffbeb; }
+</style>
+</head>
+<body>
+  <h1>Hybrid physics: <span>SPH where the flow is violent, 2D shallow water where the river is long.</span></h1>
+
+  <div class="label">PIPELINE &nbsp;<small>(images are real outputs of our engine - Teesta-III and Hirakud demo runs)</small></div>
+  <div class="flow">
+    <div class="card" style="width:206px">
+      <div class="illus">
+        <svg width="170" height="140" viewBox="0 0 170 140">
+          <rect x="4" y="6" width="162" height="128" rx="8" fill="#e8f0e3"/>
+          <path d="M10 40 C40 60, 60 30, 85 55 S120 110, 160 118" stroke="#3b82f6" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <polygon points="70,34 98,40 102,62 74,66" fill="#a16207" fill-opacity=".55" stroke="#d97706" stroke-width="2"/>
+          <circle cx="70" cy="34" r="3" fill="#fff" stroke="#d97706" stroke-width="2"/><circle cx="98" cy="40" r="3" fill="#fff" stroke="#d97706" stroke-width="2"/>
+          <circle cx="102" cy="62" r="3" fill="#fff" stroke="#d97706" stroke-width="2"/><circle cx="74" cy="66" r="3" fill="#fff" stroke="#d97706" stroke-width="2"/>
+          <path d="M136 14c-7 0-12 5-12 11 0 8 12 19 12 19s12-11 12-19c0-6-5-11-12-11z" fill="#1e2a78"/>
+          <circle cx="136" cy="25" r="4" fill="#fff"/>
+          <rect x="12" y="96" width="62" height="30" rx="4" fill="#fff" stroke="#d6dae1"/>
+          <rect x="17" y="102" width="40" height="4" rx="2" fill="#1e2a78"/><rect x="17" y="110" width="50" height="3" rx="1.5" fill="#cbd5e1"/><rect x="17" y="117" width="34" height="3" rx="1.5" fill="#cbd5e1"/>
+        </svg>
+      </div>
+      <div class="body"><h4><span class="n">1</span>Input</h4><p>Dam from register, custom pin, or <b>draw the landslide debris</b> on imagery</p></div>
+    </div>
+    <div class="arr">›</div>
+
+    <div class="card" style="width:182px">
+      <div class="img"><img src="assets/dem_river.png"><span class="src">SRTM DEM</span></div>
+      <div class="body"><h4><span class="n">2</span>Pre-process</h4><p>River trace, sill carving, lake volume curve</p></div>
+    </div>
+    <div class="arr">›</div>
+
+    <div class="card" style="width:218px">
+      <div class="img" style="background:#fff"><img class="contain" src="assets/hydro.png"><span class="src">outflow m³/s vs min</span></div>
+      <div class="body"><h4><span class="n">3</span>Breach hydrograph</h4><p>Froehlich 2008 · MacDonald-LM · Costa &amp; Schuster (landslide)</p></div>
+    </div>
+    <div class="arr">›</div>
+
+    <div class="card hl" style="width:252px">
+      <div class="img" style="background:#fff"><img class="contain" src="assets/sph.png"><span class="src">WCSPH particles</span></div>
+      <div class="body"><h4><span class="n">4a</span>SPH near field</h4><p>Breach + first 1-3 km · debris · <b>impact force</b> on barrage</p></div>
+    </div>
+    <div class="arr g">
+      <svg viewBox="0 0 50 18"><path d="M2 9h40" stroke="#15803d" stroke-width="2.5"/><path d="M38 3l9 6-9 6z" fill="#15803d"/></svg>
+      handover
+    </div>
+
+    <div class="card hl" style="width:192px">
+      <div class="img"><img src="assets/flood_depth.png"><span class="src">max depth</span></div>
+      <div class="body"><h4><span class="n">4b</span>2D far field</h4><p>SWE-2D / Delft3D FM, 20-100 km, cascade dams</p>
+        <div class="legend"><i style="background:#c6e9ff"></i><i style="background:#6fb6f0"></i><i style="background:#2f7fd6"></i><i style="background:#1b4fa8"></i><i style="background:#2a167a"></i></div></div>
+    </div>
+    <div class="arr">›</div>
+
+    <div class="card" style="width:196px">
+      <div class="img" style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
+        <div style="position:relative;height:158px;overflow:hidden"><img src="assets/hazard.png"><span class="src">hazard</span></div>
+        <div style="position:relative;height:158px;overflow:hidden"><img src="assets/arrival.png"><span class="src">arrival</span></div>
+      </div>
+      <div class="body"><h4><span class="n">5</span>Hazard + timing</h4><p>H1-H6 (depth × velocity), arrival time, probability map</p></div>
+    </div>
+    <div class="arr">›</div>
+
+    <div class="card" style="width:206px">
+      <div class="illus">
+        <div class="icons">
+          <div class="ib"><div class="c" style="background:#fee2e2"><svg viewBox="0 0 24 24" stroke="#dc2626"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M15 14c3 0 6 2 6 5"/></svg></div>People</div>
+          <div class="ib"><div class="c" style="background:#ffedd5"><svg viewBox="0 0 24 24" stroke="#ea580c"><path d="M2 16h20M4 16v-4a8 8 0 0116 0v4M8 16v-3M12 16v-4M16 16v-3"/></svg></div>Bridges</div>
+          <div class="ib"><div class="c" style="background:#fef3c7"><svg viewBox="0 0 24 24" stroke="#b45309"><path d="M6 4h12M6 8h12M10 4c4 0 6 2 6 4s-2 4-6 4H6l8 8"/></svg></div>Loss ₹</div>
+          <div class="ib"><div class="c" style="background:#dcfce7"><svg viewBox="0 0 24 24" stroke="#15803d"><circle cx="12" cy="12" r="9"/><path d="M8 7v10M16 7v10M8 12h8"/></svg></div>Helipads</div>
+          <div class="ib"><div class="c" style="background:#e0f2fe"><svg viewBox="0 0 24 24" stroke="#0369a1"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg></div>Golden time</div>
+          <div class="ib"><div class="c" style="background:#ede9fe"><svg viewBox="0 0 24 24" stroke="#6d28d9"><path d="M5 12a7 7 0 0114 0M8 12a4 4 0 018 0"/><circle cx="12" cy="12" r="1.5"/><path d="M12 14v7"/></svg></div>Sensor sites</div>
+        </div>
+      </div>
+      <div class="body"><h4><span class="n">6</span>Impact + HADR</h4><p>Settlements, roads, hospitals, relief staging</p></div>
+    </div>
+    <div class="arr">›</div>
+
+    <div class="card final" style="width:206px">
+      <div class="illus">
+        <div class="files">
+          <div class="file" style="border-color:#16a34a;color:#15803d">SHP <small>GIS</small></div>
+          <div class="file" style="border-color:#2563eb;color:#1d4ed8">KMZ <small>animated</small></div>
+          <div class="file" style="border-color:#dc2626;color:#b91c1c">CAP <small>alert</small></div>
+          <div class="file" style="border-color:#6b7280;color:#374151">PDF <small>sitrep</small></div>
+          <div class="file" style="border-color:#7c3aed;color:#6d28d9">WMS <small>Bhuvan</small></div>
+          <div class="file" style="border-color:#d97706;color:#b45309">JSON <small>GeoJSON</small></div>
+        </div>
+      </div>
+      <div class="body"><h4><span class="n">7</span>Export + Dashboard</h4><p>Live map, 1-click sitrep, CAP for NDMA SACHET</p></div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div>
+      <div class="label">TECH STACK</div>
+      <div class="panel">
+        <div class="techrow"><div class="ti"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.3"/><circle cx="17" cy="7" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="7" cy="17" r="2.3"/><circle cx="17" cy="17" r="2.3"/></svg></div><b>Solvers</b>
+          <div class="chips"><span class="chip g">SWE-2D (C#)</span><span class="chip g">WCSPH (C#)</span><span class="chip">Delft3D FM</span><span class="chip">DualSPHysics GPU</span></div></div>
+        <div class="techrow"><div class="ti"><svg viewBox="0 0 24 24"><path d="M3 19l6-10 4 6 3-4 5 8z"/></svg></div><b>Geo</b>
+          <div class="chips"><span class="chip">GLO-30 / SRTM</span><span class="chip">NetTopologySuite</span><span class="chip">OpenStreetMap</span><span class="chip">Earth Engine</span></div></div>
+        <div class="techrow"><div class="ti"><svg viewBox="0 0 24 24"><path d="M10 14l-2 2a3 3 0 01-4-4l3-3a3 3 0 014 0"/><path d="M14 10l2-2a3 3 0 014 4l-3 3a3 3 0 01-4 0"/></svg></div><b>Backend</b>
+          <div class="chips"><span class="chip k">.NET 8</span><span class="chip">Clean Arch + CQRS</span><span class="chip">Hangfire</span><span class="chip">Redis</span><span class="chip">Neon Postgres</span><span class="chip">JWT</span></div></div>
+        <div class="techrow"><div class="ti"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg></div><b>Frontend</b>
+          <div class="chips"><span class="chip k">React</span><span class="chip">MapLibre 3D</span><span class="chip">Recharts</span><span class="chip">SignalR</span></div></div>
+        <div class="techrow"><div class="ti"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/></svg></div><b>Deploy</b>
+          <div class="chips"><span class="chip">Docker Compose</span><span class="chip">K8s-ready</span><span class="chip">Offline sim core</span></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="label">WHY HYBRID?</div>
+      <div class="panel">
+        <div class="hybrid">
+          <img src="assets/profile.png">
+          <div class="zone sph"><span>SPH</span><small>violent flow,<br>debris, impact force</small></div>
+          <div class="zone swe"><span>SWE-2D / Delft3D</span><small>depth-averaged, routes the flood 100 km in minutes</small></div>
+        </div>
+        <div class="facts">
+          <div class="fact"><b>Breach peak (Froehlich 1995)</b><br><span class="formula">Q<sub>p</sub> = 0.607 V<sub>w</sub><sup>0.295</sup> h<sub>w</sub><sup>1.24</sup></span></div>
+          <div class="fact"><b>Overlap zone</b><br>SPH vs SWE vs Ritter compared at the same gauges</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="label">LAKE-TO-ALERT (AUTOMATIC)</div>
+      <div class="panel">
+        <div class="loop">
+          <svg class="loopsvg" viewBox="0 0 376 220">
+            <defs><marker id="m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0l8 4-8 4z" fill="#15803d"/></marker></defs>
+            <path d="M118 24 H254" stroke="#15803d" stroke-width="2" fill="none" marker-end="url(#m)" stroke-dasharray="5 4"/>
+            <path d="M316 86 V128" stroke="#15803d" stroke-width="2" fill="none" marker-end="url(#m)" stroke-dasharray="5 4"/>
+            <path d="M254 150 H118" stroke="#15803d" stroke-width="2" fill="none" marker-end="url(#m)" stroke-dasharray="5 4"/>
+            <path d="M60 128 V86" stroke="#15803d" stroke-width="2" fill="none" marker-end="url(#m)" stroke-dasharray="5 4"/>
+          </svg>
+          <div class="node" style="left:-6px;top:0"><div class="c" style="background:#1e2a78"><svg viewBox="0 0 24 24"><path d="M4 10l6-6 4 4-6 6zM14 14l6-6M10 14l4 4M3 21l4-4"/></svg></div><b>Weekly GEE scan</b>Sentinel-1/2 NDWI</div>
+          <div class="node" style="left:250px;top:0"><div class="c" style="background:#0ea5e9"><svg viewBox="0 0 24 24"><path d="M3 15c3-2 6 2 9 0s6 2 9 0M3 19c3-2 6 2 9 0s6 2 9 0M8 11l4-7 4 7"/></svg></div><b>New lake found</b>volume from DEM</div>
+          <div class="node" style="left:250px;top:128px"><div class="c" style="background:#15803d"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div><b>Auto-simulate</b>natural-dam burst</div>
+          <div class="node" style="left:-6px;top:128px"><div class="c" style="background:#dc2626"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 016 6v4l2 3H4l2-3V9a6 6 0 016-6zM10 19a2 2 0 004 0"/></svg></div><b>CAP alert</b>villages + map</div>
+          <div class="center-note"><span>&lt; 30 min</span>pixel to<br>evacuation map</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="label">VALIDATION LADDER</div>
+      <div class="panel val">
+        <img src="assets/ritter.png">
+        <div class="rung"><span class="num">1</span><span><b>Ritter / Stoker</b> exact solution</span><span class="res">L1 2.9% / 0.8%</span></div>
+        <div class="rung"><span class="num">2</span><span><b>Malpasset 1959</b> benchmark</span><span class="res p">runner ready</span></div>
+        <div class="rung"><span class="num">3</span><span><b>Teesta 2023</b> vs Sentinel-1</span><span class="res p">CSI pending</span></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
