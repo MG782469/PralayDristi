@@ -39,6 +39,22 @@ public sealed class ScenarioEngine
                         Math.Min(b.East, coarse.East), Math.Min(b.North, coarse.North));
     }
 
+    /// <summary>
+    /// Register coordinates of big dams often land on the reservoir surface (Tehri did), and the flat lake
+    /// carries the most accumulation nearby. Take the best cell within 400 m whose river actually falls away,
+    /// at least 10 m in the next 2 km.
+    /// </summary>
+    public static int SnapDam(DemGrid dem, Hydrology.Routing routing, GeoPoint point, List<string> log)
+    {
+        const double radius = 400, minDrop = 10, within = 2000;
+        int cell = Hydrology.SnapToRiver(dem, routing.Accumulation, point, radius,
+            i => Hydrology.DropAlong(dem, routing.Receivers, i, within) >= minDrop);
+        if (cell >= 0) return cell;
+        log.Add($"Warning: no river cell within {radius:F0} m of the dam falls {minDrop:F0} m in {within / 1000:F0} km; " +
+                "the point may sit on the reservoir. Using the nearest channel cell, check the dam coordinates.");
+        return Hydrology.NearestChannelCell(dem, routing.Accumulation, point, radius);
+    }
+
     public PreparedScenario Prepare(ScenarioSpec spec, DemGrid rawDem)
     {
         var log = new List<string>();
@@ -90,7 +106,7 @@ public sealed class ScenarioEngine
         }
         else
         {
-            damCell = Hydrology.SnapToRiver(dem, routing.Accumulation, damSpec.Location(), 1000);
+            damCell = SnapDam(dem, routing, damSpec.Location(), log);
             bed = dem.Z[damCell];
             crest = bed + damSpec.HeightM;
             hw = damSpec.HwOrDefault;
@@ -114,9 +130,15 @@ public sealed class ScenarioEngine
         var dir = Hydrology.FlowVector(dem, down);
 
         // dam body as a wall across the valley so injected water can't run back up into the reservoir area
-        var damLine = CrossValleyLine(dem, damCell, dir, crest, 3000);
+        // long earth dams (Hirakud is ~4.8 km plus dykes) need a wall as long as the crest
+        double halfLength = Math.Clamp(Math.Max(3000, damSpec.CrestLengthM), 3000, 15000);
+        var damLine = CrossValleyLine(dem, damCell, dir, crest, halfLength);
         if (spec.Mode != ScenarioMode.NaturalDam)
+        {
             foreach (int i in damLine) { dem.Z[i] = (float)Math.Max(dem.Z[i], crest); exclude[i] = true; }
+            int dykeCells = BurnDykes(dem, damSpec.Dykes, crest, exclude);
+            if (dykeCells > 0) log.Add($"Dykes raised to crest level on {dykeCells} cells.");
+        }
 
         // no bathymetry: burn a nominal channel below the dam, then carve out DEM sills along the river
         var channel = Hydrology.FourConnected(dem, down.Skip(1).ToList());
@@ -129,10 +151,21 @@ public sealed class ScenarioEngine
         Array.Fill(manning, (float)spec.Manning);
         foreach (int i in channel) manning[i] = (float)spec.ChannelManning;
 
-        var routed = BreachRouting.Route(storage, breach, new BreachRouting.Options(
+        var routeOptions = new BreachRouting.Options(
             CrestElevation: crest, InvertElevation: bed, InitialLevel: bed + hw,
-            Dt: Math.Clamp(breach.FormationTime / 500, 0.5, 5)));
+            Dt: Math.Clamp(breach.FormationTime / 500, 0.5, 5));
+        var routed = BreachRouting.Route(storage, breach, routeOptions);
+        var empirical = peaks.FirstOrDefault(p => p.PeakM3s > 0);
+        if (spec.CalibrateBreachToEmpirical && empirical != null)
+            (breach, routed) = CalibrateBreach(storage, breach, routeOptions, empirical.PeakM3s);
         log.Add($"Breach: {breach.Method}, B = {breach.AverageWidth:F0} m, tf = {breach.FormationTime / 60:F0} min, Qp = {routed.Peak:F0} m3/s.");
+        if (empirical != null)
+        {
+            double ratio = routed.Peak / empirical.PeakM3s;
+            if (ratio > 2 || ratio < 0.5)
+                log.Add($"Warning: routed breach peak {routed.Peak:F0} m3/s is {Math.Max(ratio, 1 / ratio):F1}x off the " +
+                        $"{empirical.Method} empirical peak {empirical.PeakM3s:F0} m3/s. Check the breach inputs or turn on calibration.");
+        }
 
         int outlet = down.Count > 1 ? down[1] : damCell;
         if (nat != null) outlet = down.FirstOrDefault(i => !nat.DebrisMask[i], outlet);
@@ -380,6 +413,49 @@ public sealed class ScenarioEngine
             if (dem.Z[i] < crest && !cells.Contains(i)) cells.Add(i);
         }
         return cells.ToArray();
+    }
+
+    /// <summary>
+    /// Scales the breach width until the routed peak matches the empirical one. Bisection on the width factor
+    /// in [0.2, 3]; the peak rises monotonically with width so 12 halvings are plenty.
+    /// </summary>
+    private static (BreachGeometry, Hydrograph) CalibrateBreach(StorageCurve storage, BreachGeometry b,
+        BreachRouting.Options options, double target)
+    {
+        BreachGeometry Scaled(double f)
+        {
+            double w = b.AverageWidth * f;
+            return b with { AverageWidth = w, BottomWidth = Math.Max(1, w - b.SideSlope * b.Depth) };
+        }
+        double lo = 0.2, hi = 3;
+        for (int k = 0; k < 12; k++)
+        {
+            double mid = 0.5 * (lo + hi);
+            if (BreachRouting.Route(storage, Scaled(mid), options).Peak < target) lo = mid; else hi = mid;
+        }
+        double factor = 0.5 * (lo + hi);
+        var best = Scaled(factor) with { Method = b.Method + $" (width x{factor:F2}, calibrated)" };
+        return (best, BreachRouting.Route(storage, best, options));
+    }
+
+    /// <summary>Raises optional dyke polylines ([lon, lat] vertices) to crest level so they hold the reservoir too.</summary>
+    private static int BurnDykes(DemGrid dem, List<double[]>? dykes, double crest, bool[] exclude)
+    {
+        if (dykes is not { Count: >= 2 }) return 0;
+        int n = 0;
+        for (int k = 1; k < dykes.Count; k++)
+        {
+            if (!dem.TryCell(new GeoPoint(dykes[k - 1][0], dykes[k - 1][1]), out int r0, out int c0) ||
+                !dem.TryCell(new GeoPoint(dykes[k][0], dykes[k][1]), out int r1, out int c1)) continue;
+            foreach (int i in RasterOps.LineCells(dem, r0, c0, r1, c1))
+            {
+                if (dem.Z[i] >= crest) continue;
+                dem.Z[i] = (float)crest;
+                exclude[i] = true;
+                n++;
+            }
+        }
+        return n;
     }
 
     /// <summary>Line across the valley through a cell, extended until the ground rises above the given level.</summary>

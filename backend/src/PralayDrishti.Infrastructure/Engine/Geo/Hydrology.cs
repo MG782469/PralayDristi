@@ -96,21 +96,51 @@ public static class Hydrology
     /// <summary>
     /// Moves a user supplied point (dam location from a register, usually off by a few hundred metres)
     /// onto the cell with the largest accumulation within the search radius.
+    /// With <paramref name="accept"/> only cells passing it count, and -1 means none did.
     /// </summary>
-    public static int SnapToRiver(DemGrid dem, int[] acc, GeoPoint p, double radiusMeters = 600)
+    public static int SnapToRiver(DemGrid dem, int[] acc, GeoPoint p, double radiusMeters = 600, Func<int, bool>? accept = null)
     {
         if (!dem.TryCell(p, out int r0, out int c0))
             throw new ArgumentException($"point {p} lies outside the DEM");
         int rad = Math.Max(1, (int)(radiusMeters / Math.Min(dem.Dx, dem.Dy)));
-        int best = dem.Idx(r0, c0);
+        int best = accept == null ? dem.Idx(r0, c0) : -1;
         for (int r = r0 - rad; r <= r0 + rad; r++)
             for (int c = c0 - rad; c <= c0 + rad; c++)
             {
                 if (!dem.InBounds(r, c)) continue;
                 int i = dem.Idx(r, c);
-                if (acc[i] > acc[best]) best = i;
+                if (best >= 0 && acc[i] <= acc[best]) continue;
+                if (accept == null || accept(i)) best = i;
             }
         return best;
+    }
+
+    /// <summary>
+    /// Closest cell to the point that still looks like a channel (at least a quarter of the largest
+    /// accumulation in the radius). Fallback when nothing better qualifies.
+    /// </summary>
+    public static int NearestChannelCell(DemGrid dem, int[] acc, GeoPoint p, double radiusMeters)
+    {
+        int top = SnapToRiver(dem, acc, p, radiusMeters);
+        dem.TryCell(p, out int r0, out int c0);
+        int rad = Math.Max(1, (int)(radiusMeters / Math.Min(dem.Dx, dem.Dy)));
+        int best = top, bestD2 = int.MaxValue;
+        for (int r = r0 - rad; r <= r0 + rad; r++)
+            for (int c = c0 - rad; c <= c0 + rad; c++)
+            {
+                if (!dem.InBounds(r, c)) continue;
+                int i = dem.Idx(r, c), d2 = (r - r0) * (r - r0) + (c - c0) * (c - c0);
+                if (acc[i] * 4 >= acc[top] && d2 < bestD2) { best = i; bestD2 = d2; }
+            }
+        return best;
+    }
+
+    /// <summary>How far the ground falls along the D8 path within the given distance.</summary>
+    public static double DropAlong(DemGrid dem, int[] receivers, int start, double metres)
+    {
+        float min = dem.Z[start];
+        foreach (int i in TraceDownstream(dem, receivers, start, metres)) min = Math.Min(min, dem.Z[i]);
+        return dem.Z[start] - min;
     }
 
     /// <summary>Follows D8 receivers from a start cell until the grid edge (or maxLength metres).</summary>
