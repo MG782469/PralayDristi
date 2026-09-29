@@ -121,3 +121,32 @@ public class RedisNamespaceTests
         Assert.Equal("pralay:prod-a:", ns);
     }
 }
+
+public class RedisHealthCheckTests
+{
+    private static readonly Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext Ctx = new();
+
+    [Fact]
+    public async Task Redis_down_at_startup_reports_degraded_not_unhealthy()
+    {
+        var cache = new ResilientCacheService(null, new MemoryCache(new MemoryCacheOptions()), NullLogger<ResilientCacheService>.Instance);
+        var check = new RedisHealthCheck(new RedisStatus(false), cache);
+
+        var r = await check.CheckHealthAsync(Ctx);
+
+        Assert.Equal(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, r.Status);
+        Assert.Contains("in-process", r.Description);
+    }
+
+    [Fact]
+    public async Task Redis_dropping_mid_flight_reports_degraded()
+    {
+        var redis = new RedisCache(new RedisCacheOptions { Configuration = "localhost:1,connectTimeout=200,abortConnect=false,syncTimeout=200" });
+        var cache = new ResilientCacheService(redis, new MemoryCache(new MemoryCacheOptions()), NullLogger<ResilientCacheService>.Instance);
+        await cache.SetAsync("k", 1, TimeSpan.FromMinutes(1));   // fails against port 1 and marks Redis down
+
+        var r = await new RedisHealthCheck(new RedisStatus(true), cache).CheckHealthAsync(Ctx);
+
+        Assert.Equal(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, r.Status);
+    }
+}

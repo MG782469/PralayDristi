@@ -5,6 +5,7 @@ using PralayDrishti.API.Hubs;
 using PralayDrishti.API.Services;
 using PralayDrishti.Application.Common.Abstractions;
 using PralayDrishti.Application.Common.Options;
+using PralayDrishti.Infrastructure.BackgroundJobs;
 
 namespace PralayDrishti.API.Extensions;
 
@@ -34,7 +35,9 @@ public static class DependencyInjection
 
         services.AddJwtAuthentication(config);
         services.AddSwaggerWithBearer();
-        services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: new[] { "ready" });
+        services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "ready" })
+            .AddCheck<RedisHealthCheck>("redis", tags: new[] { "ready" });
 
         string[] origins = config.GetSection("PralayDrishti:CorsOrigins").Get<string[]>() ?? Array.Empty<string>();
         services.AddCors(c => c.AddDefaultPolicy(p =>
