@@ -1,82 +1,52 @@
-using PralayDrishti.Application.Common.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using PralayDrishti.API.Data;
-using PralayDrishti.API.Services;
-using PralayDrishti.Infrastructure.Engine.Pipeline;
+using PralayDrishti.API.Extensions;
+using PralayDrishti.Application.Common.Models;
+using PralayDrishti.Application.Features.Commands.Dams.CreateDam;
+using PralayDrishti.Application.Features.Commands.Dams.DeleteDam;
+using PralayDrishti.Application.Features.Commands.Dams.SimulateDam;
+using PralayDrishti.Application.Features.Commands.Dams.UpdateDam;
+using PralayDrishti.Application.Features.Queries.Dams.GetDamById;
+using PralayDrishti.Application.Features.Queries.Dams.GetDams;
+using PralayDrishti.Application.Features.Queries.Dams.GetDefaultScenario;
 
 namespace PralayDrishti.API.Controllers;
 
-[ApiController]
 [Route("api/dams")]
-public class DamsController : ControllerBase
+[Authorize(Policy = Policies.CanRead)]
+public class DamsController : ApiControllerBase
 {
-    private readonly AppDbContext _db;
-    private readonly RunQueue _queue;
-
-    public DamsController(AppDbContext db, RunQueue queue)
-    {
-        _db = db;
-        _queue = queue;
-    }
-
     [HttpGet]
-    public async Task<List<DamEntity>> List() => await _db.Dams.OrderBy(d => d.Name).ToListAsync();
+    public Task<IReadOnlyList<DamDto>> List(CancellationToken ct) => Sender.Send(new GetDamsQuery(), ct);
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<DamEntity>> Get(int id) => await _db.Dams.FindAsync(id) is { } d ? d : NotFound();
+    public Task<DamDto> Get(int id, CancellationToken ct) => Sender.Send(new GetDamByIdQuery(id), ct);
+
+    /// <summary>Default scenario for the dam, so the dashboard can pre-fill the form.</summary>
+    [HttpGet("{id:int}/scenario")]
+    public Task<ScenarioSpec> Scenario(int id, bool cascade, CancellationToken ct) => Sender.Send(new GetDefaultScenarioQuery(id, cascade), ct);
 
     [HttpPost]
-    public async Task<ActionResult<DamEntity>> Create(DamEntity dam)
+    [Authorize(Policy = Policies.AdminOnly)]
+    public async Task<ActionResult<DamDto>> Create(DamDto dam, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(dam.Name)) return BadRequest("name is required");
-        if (dam.HeightM <= 0) return BadRequest("height must be positive");
-        dam.Id = 0;
-        _db.Dams.Add(dam);
-        await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(Get), new { id = dam.Id }, dam);
+        var created = await Sender.Send(new CreateDamCommand(dam), ct);
+        return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, DamEntity dam)
-    {
-        var existing = await _db.Dams.FindAsync(id);
-        if (existing == null) return NotFound();
-        dam.Id = id;
-        _db.Entry(existing).CurrentValues.SetValues(dam);
-        await _db.SaveChangesAsync();
-        return NoContent();
-    }
+    [Authorize(Policy = Policies.AdminOnly)]
+    public Task<DamDto> Update(int id, DamDto dam, CancellationToken ct) => Sender.Send(new UpdateDamCommand(id, dam), ct);
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [Authorize(Policy = Policies.AdminOnly)]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        var d = await _db.Dams.FindAsync(id);
-        if (d == null) return NotFound();
-        _db.Dams.Remove(d);
-        await _db.SaveChangesAsync();
+        await Sender.Send(new DeleteDamCommand(id), ct);
         return NoContent();
-    }
-
-    /// <summary>Default scenario for the dam, returned so the UI can pre-fill the form.</summary>
-    [HttpGet("{id:int}/scenario")]
-    public async Task<ActionResult<ScenarioSpec>> DefaultScenario(int id, bool cascade = false)
-    {
-        var d = await _db.Dams.FindAsync(id);
-        if (d == null) return NotFound();
-        return ScenarioFactory.Default(d, await _db.Dams.ToListAsync(), cascade);
     }
 
     [HttpPost("{id:int}/simulate")]
-    public async Task<ActionResult<RunSummary>> Simulate(int id, bool cascade = false)
-    {
-        var d = await _db.Dams.FindAsync(id);
-        if (d == null) return NotFound();
-        var spec = ScenarioFactory.Default(d, await _db.Dams.ToListAsync(), cascade);
-        var run = ScenarioFactory.NewRun(spec, "user", d.Id);
-        _db.Runs.Add(run);
-        await _db.SaveChangesAsync();
-        await _queue.EnqueueAsync(run.Id);
-        return RunViews.Summary(run);
-    }
+    [Authorize(Policy = Policies.CanSimulate)]
+    public Task<RunSummaryDto> Simulate(int id, bool cascade, CancellationToken ct) => Sender.Send(new SimulateDamCommand(id, cascade), ct);
 }

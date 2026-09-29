@@ -121,6 +121,9 @@ public interface IDemProvider
 {
     Task<JsonPayload> ListUploadedAsync(CancellationToken ct);
     Task<string> SaveUploadAsync(Stream content, string fileName, CancellationToken ct);
+
+    /// <summary>Terrarium DEM tile for the dashboard's 3D terrain, served from the same cache the simulations use.</summary>
+    Task<byte[]?> GetTerrainTileAsync(int z, int x, int y, CancellationToken ct);
 }
 
 public interface IExposureProvider

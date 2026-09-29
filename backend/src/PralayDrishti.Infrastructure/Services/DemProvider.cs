@@ -95,6 +95,25 @@ public sealed class DemProvider : IDemProvider
         return new DemSource(v.Dem, "SYNTHETIC valley (no DEM available offline for this area - demo only)", true);
     }
 
+    public async Task<byte[]?> GetTerrainTileAsync(int z, int x, int y, CancellationToken ct)
+    {
+        if (z < 0 || z > 15 || x < 0 || y < 0 || x >= (1 << z) || y >= (1 << z)) return null;
+        string file = Path.Combine(_paths.Tiles, z.ToString(), x.ToString(), $"{y}.png");
+        if (File.Exists(file)) return await File.ReadAllBytesAsync(file, ct);
+        if (_opt.Offline) return null;
+        try
+        {
+            var bytes = await _http.CreateClient("tiles").GetByteArrayAsync($"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", ct);
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            await File.WriteAllBytesAsync(file, bytes, ct);
+            return bytes;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
     public Task<JsonPayload> ListUploadedAsync(CancellationToken ct) =>
         Task.FromResult(new JsonPayload(JsonSerializer.Serialize(ListUploaded(), Mappings.Json)));
 

@@ -1,82 +1,46 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using PralayDrishti.API.Data;
-using PralayDrishti.API.Services;
+using PralayDrishti.API.Extensions;
+using PralayDrishti.Application.Common.Models;
+using PralayDrishti.Application.Features.Commands.Alerts.AcknowledgeAlert;
+using PralayDrishti.Application.Features.Commands.Atlas.RunAtlas;
+using PralayDrishti.Application.Features.Commands.Users.ChangeUserRole;
+using PralayDrishti.Application.Features.Commands.Users.SetUserActive;
+using PralayDrishti.Application.Features.Queries.Alerts.GetAlertCap;
+using PralayDrishti.Application.Features.Queries.Alerts.GetAlertFeed;
+using PralayDrishti.Application.Features.Queries.Alerts.GetAlerts;
+using PralayDrishti.Application.Features.Queries.Atlas.GetLeaderboard;
+using PralayDrishti.Application.Features.Queries.Users.GetUsers;
+using PralayDrishti.Application.Services;
+using PralayDrishti.Domain.Enums;
 
 namespace PralayDrishti.API.Controllers;
 
-[ApiController]
 [Route("api/alerts")]
-public class AlertsController : ControllerBase
+[Authorize(Policy = Policies.CanRead)]
+public class AlertsController : ApiControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public AlertsController(AppDbContext db) => _db = db;
-
     [HttpGet]
-    public async Task<IActionResult> List() => Ok(await _db.Alerts.OrderByDescending(a => a.CreatedUtc).Take(200)
-        .Select(a => new { a.Id, a.RunId, a.CreatedUtc, a.Headline, a.Severity, a.Status, a.PopulationAtRisk, a.FirstArrivalMin, a.Acknowledged })
-        .ToListAsync());
+    public Task<IReadOnlyList<AlertDto>> List(CancellationToken ct) => Sender.Send(new GetAlertsQuery(), ct);
 
-    /// <summary>The CAP 1.2 document, ready for NDMA SACHET or any CAP aggregator.</summary>
+    /// <summary>CAP 1.2 XML. Public: CAP is meant to be picked up by aggregators such as NDMA SACHET.</summary>
     [HttpGet("{id:guid}/cap")]
-    public async Task<IActionResult> Cap(Guid id)
-    {
-        var a = await _db.Alerts.FindAsync(id);
-        return a == null ? NotFound() : Content(a.CapXml, "application/cap+xml");
-    }
+    [AllowAnonymous]
+    [Produces("application/cap+xml")]
+    public async Task<ContentResult> Cap(Guid id, CancellationToken ct) =>
+        Content(await Sender.Send(new GetAlertCapQuery(id), ct), "application/cap+xml");
+
+    [HttpGet("feed")]
+    [AllowAnonymous]
+    [Produces("application/atom+xml")]
+    public async Task<ContentResult> Feed(CancellationToken ct) =>
+        Content(await Sender.Send(new GetAlertFeedQuery(BaseUrl), ct), "application/atom+xml");
 
     [HttpPost("{id:guid}/ack")]
-    public async Task<IActionResult> Ack(Guid id)
+    [Authorize(Policy = Policies.CanSimulate)]
+    public async Task<IActionResult> Ack(Guid id, CancellationToken ct)
     {
-        var a = await _db.Alerts.FindAsync(id);
-        if (a == null) return NotFound();
-        a.Acknowledged = true;
-        await _db.SaveChangesAsync();
-        return Ok();
+        await Sender.Send(new AcknowledgeAlertCommand(id), ct);
+        return NoContent();
     }
-
-    /// <summary>CAP feed (Atom) of the latest alerts, the usual way aggregators poll.</summary>
-    [HttpGet("feed")]
-    public async Task<IActionResult> Feed()
-    {
-        var alerts = await _db.Alerts.OrderByDescending(a => a.CreatedUtc).Take(50).ToListAsync();
-        string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-        sb.AppendLine("<feed xmlns=\"http://www.w3.org/2005/Atom\">");
-        sb.AppendLine("<title>PralayDrishti CAP alerts</title>");
-        sb.AppendLine($"<id>{baseUrl}/api/alerts/feed</id>");
-        sb.AppendLine($"<updated>{(alerts.FirstOrDefault()?.CreatedUtc ?? DateTime.UtcNow):yyyy-MM-ddTHH:mm:ssZ}</updated>");
-        foreach (var a in alerts)
-        {
-            sb.AppendLine("<entry>");
-            sb.AppendLine($"<id>urn:uuid:{a.Id}</id>");
-            sb.AppendLine($"<title>{System.Security.SecurityElement.Escape(a.Headline)}</title>");
-            sb.AppendLine($"<updated>{a.CreatedUtc:yyyy-MM-ddTHH:mm:ssZ}</updated>");
-            sb.AppendLine($"<link rel=\"alternate\" type=\"application/cap+xml\" href=\"{baseUrl}/api/alerts/{a.Id}/cap\"/>");
-            sb.AppendLine("</entry>");
-        }
-        sb.AppendLine("</feed>");
-        return Content(sb.ToString(), "application/atom+xml");
-    }
-}
-
-[ApiController]
-[Route("api/atlas")]
-public class AtlasController : ControllerBase
-{
-    private readonly AtlasService _atlas;
-
-    public AtlasController(AtlasService atlas) => _atlas = atlas;
-
-    [HttpPost("run")]
-    public async Task<IActionResult> Run([FromBody] List<int>? damIds, CancellationToken ct)
-    {
-        var ids = await _atlas.QueueAllAsync(damIds is { Count: > 0 } ? damIds : null, ct);
-        return Ok(new { queued = ids.Count, ids });
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Leaderboard(CancellationToken ct) => Ok(await _atlas.LeaderboardAsync(ct));
 }
