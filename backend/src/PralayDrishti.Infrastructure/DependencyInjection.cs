@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using PralayDrishti.Application.Common.Abstractions;
 using PralayDrishti.Domain.Interfaces;
+using PralayDrishti.Infrastructure.Identity;
 using PralayDrishti.Infrastructure.Persistence;
 using PralayDrishti.Infrastructure.Persistence.Repositories;
 using PralayDrishti.Infrastructure.Persistence.Seed;
@@ -14,6 +16,7 @@ public static partial class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config, IHostEnvironment env)
     {
         services.AddPersistence(config, env);
+        services.AddIdentityServices(config);
         return services;
     }
 
@@ -37,6 +40,17 @@ public static partial class DependencyInjection
         services.AddScoped<ILakeDetectionRepository, LakeDetectionRepository>();
         services.AddScoped<IAlertRepository, AlertRepository>();
         services.Configure<SeedOptions>(config.GetSection("Seed"));
+        return services;
+    }
+
+    public static IServiceCollection AddIdentityServices(this IServiceCollection services, IConfiguration config)
+    {
+        services.AddOptions<JwtOptions>().Bind(config.GetSection(JwtOptions.Section))
+            .Validate(o => System.Text.Encoding.UTF8.GetByteCount(o.Secret) >= 32, "Jwt:Secret must be at least 32 bytes")
+            .ValidateOnStart();
+        services.AddSingleton<IDateTimeProvider, SystemClock>();
+        services.AddSingleton<ITokenService, JwtTokenService>();
+        services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         return services;
     }
 }

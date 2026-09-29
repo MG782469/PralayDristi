@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using PralayDrishti.Application.Common.Behaviors;
+using PralayDrishti.Application.Services;
 
 namespace PralayDrishti.Application;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));
         });
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
+        services.AddScoped<AuthService>();
 
         return services;
     }
