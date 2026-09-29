@@ -57,7 +57,7 @@ public sealed class HangfireTokenCookieMiddleware
         if (ctx.Request.Path.StartsWithSegments(_path) && ctx.Request.Query.TryGetValue("access_token", out var token))
             ctx.Response.Cookies.Append(AuthExtensions.HangfireTokenCookie, token.ToString(), new CookieOptions
             {
-                HttpOnly = true, SameSite = SameSiteMode.Strict, Secure = ctx.Request.IsHttps, Path = _path,
+                HttpOnly = true, SameSite = SameSiteMode.Strict, Secure = true, Path = _path,
                 MaxAge = TimeSpan.FromMinutes(15)
             });
         return _next(ctx);

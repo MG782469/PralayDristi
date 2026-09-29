@@ -15,22 +15,26 @@ namespace PralayDrishti.Infrastructure.BackgroundJobs;
 /// </summary>
 public sealed class InProcessJobScheduler : BackgroundService, IBackgroundJobScheduler
 {
-    private readonly Channel<(string Id, Func<IServiceProvider, Task> Run)> _queue = Channel.CreateUnbounded<(string, Func<IServiceProvider, Task>)>();
+    private readonly Channel<(string Id, string Queue, Func<IServiceProvider, Task> Run)> _queue =
+        Channel.CreateUnbounded<(string, string, Func<IServiceProvider, Task>)>();
     private readonly ConcurrentDictionary<string, byte> _deleted = new();
     private readonly ConcurrentDictionary<string, (Cron Cron, Func<IServiceProvider, Task> Run)> _recurring = new();
     private readonly IServiceScopeFactory _scopes;
     private readonly ILogger<InProcessJobScheduler> _log;
+    // same cap Hangfire gets via SimulationWorkers: simulations are CPU and memory heavy
+    private readonly SemaphoreSlim _simulationGate;
 
-    public InProcessJobScheduler(IServiceScopeFactory scopes, ILogger<InProcessJobScheduler> log)
+    public InProcessJobScheduler(IServiceScopeFactory scopes, ILogger<InProcessJobScheduler> log, int simulationWorkers = 1)
     {
         _scopes = scopes;
         _log = log;
+        _simulationGate = new SemaphoreSlim(Math.Max(1, simulationWorkers));
     }
 
     public string Enqueue<TJob>(Expression<Func<TJob, Task>> call, string queue = "default")
     {
         string id = "inproc-" + Guid.NewGuid().ToString("N")[..12];
-        _queue.Writer.TryWrite((id, Bind(call)));
+        _queue.Writer.TryWrite((id, queue, Bind(call)));
         return id;
     }
 
@@ -52,11 +56,13 @@ public sealed class InProcessJobScheduler : BackgroundService, IBackgroundJobSch
     {
         try
         {
-            await foreach (var (id, run) in _queue.Reader.ReadAllAsync(ct))
+            await foreach (var (id, queue, run) in _queue.Reader.ReadAllAsync(ct))
             {
                 if (_deleted.TryRemove(id, out _)) continue;
-                // fire and forget: one slow simulation must not hold up the next queued job
-                _ = Task.Run(() => RunSafely(id, run), ct);
+                // fire and forget: a slow simulation must not hold up small jobs on the default queue
+                _ = queue == BackgroundJobsSetup.SimulationsQueue
+                    ? Task.Run(() => RunGatedAsync(id, run, ct), ct)
+                    : Task.Run(() => RunSafely(id, run), ct);
             }
         }
         catch (OperationCanceledException) { }
@@ -75,6 +81,21 @@ public sealed class InProcessJobScheduler : BackgroundService, IBackgroundJobSch
             }
         }
         catch (OperationCanceledException) { }
+    }
+
+    private async Task RunGatedAsync(string id, Func<IServiceProvider, Task> run, CancellationToken ct)
+    {
+        await _simulationGate.WaitAsync(ct);
+        try
+        {
+            // deleted while waiting for a worker slot
+            if (_deleted.TryRemove(id, out _)) return;
+            await RunSafely(id, run);
+        }
+        finally
+        {
+            _simulationGate.Release();
+        }
     }
 
     private async Task RunSafely(string id, Func<IServiceProvider, Task> run)

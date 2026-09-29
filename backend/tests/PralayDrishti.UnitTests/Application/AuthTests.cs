@@ -117,6 +117,19 @@ public class AuthTests
     }
 
     [Fact]
+    public async Task Grace_entry_exists_before_rotation_is_committed()
+    {
+        // a second tab can read the rotated row the instant it commits; the successor must already be findable
+        var first = await Register().Handle(new RegisterCommand("race@x.in", "Secret123", "R", null), default);
+        bool graceVisibleAtCommit = false;
+        _uow.OnSave = () => graceVisibleAtCommit = _cache.Keys.Any(k => k.StartsWith("rt-grace"));
+
+        await Refresh().Handle(new RefreshTokenCommand(first.RefreshToken, null), default);
+
+        Assert.True(graceVisibleAtCommit);
+    }
+
+    [Fact]
     public async Task Logout_revokes_token()
     {
         var first = await Register().Handle(new RegisterCommand("a@x.in", "Secret123", "A", null), default);

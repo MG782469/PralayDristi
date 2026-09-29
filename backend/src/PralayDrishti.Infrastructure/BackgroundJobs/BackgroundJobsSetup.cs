@@ -98,7 +98,9 @@ public static class BackgroundJobsSetup
         {
             services.AddSingleton<ICacheService>(sp => new ResilientCacheService(null, sp.GetRequiredService<IMemoryCache>(),
                 sp.GetRequiredService<ILogger<ResilientCacheService>>()));
-            services.AddSingleton<InProcessJobScheduler>();
+            var fallbackOpts = config.GetSection(HangfireJobOptions.Section).Get<HangfireJobOptions>() ?? new HangfireJobOptions();
+            services.AddSingleton(sp => new InProcessJobScheduler(sp.GetRequiredService<IServiceScopeFactory>(),
+                sp.GetRequiredService<ILogger<InProcessJobScheduler>>(), fallbackOpts.SimulationWorkers));
             services.AddSingleton<IBackgroundJobScheduler>(sp => sp.GetRequiredService<InProcessJobScheduler>());
             services.AddHostedService(sp => sp.GetRequiredService<InProcessJobScheduler>());
         }

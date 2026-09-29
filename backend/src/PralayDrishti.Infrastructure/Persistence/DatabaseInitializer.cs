@@ -1,3 +1,4 @@
+using PralayDrishti.Infrastructure.BackgroundJobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,8 +26,9 @@ public static class DatabaseInitializer
         var paths = sp.GetRequiredService<DataPaths>();
         await DbSeeder.SeedAsync(db, sp.GetRequiredService<IPasswordHasher>(), sp.GetRequiredService<IOptions<SeedOptions>>().Value,
             paths.SeedDams, DateTime.UtcNow, log, ct);
-        int orphaned = await DbSeeder.FailOrphanedRunsAsync(db, DateTime.UtcNow, ct);
-        if (orphaned > 0) log.LogWarning("Marked {Count} runs that were running during the last shutdown as failed", orphaned);
+        bool durableJobs = sp.GetRequiredService<RedisStatus>().Connected;
+        int orphaned = await DbSeeder.FailOrphanedRunsAsync(db, DateTime.UtcNow, durableJobs, ct);
+        if (orphaned > 0) log.LogWarning("Marked {Count} runs left queued/running by the last shutdown as failed", orphaned);
         log.LogInformation("Database ready, data folder {Dir}", paths.Root);
     }
 }

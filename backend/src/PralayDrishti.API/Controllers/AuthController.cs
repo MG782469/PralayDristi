@@ -67,7 +67,7 @@ public class AuthController : ApiControllerBase
         Response.Cookies.Append(RefreshCookie, result.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = Request.IsHttps,
+            Secure = true,   // browsers accept Secure cookies on http://localhost, and behind a TLS proxy IsHttps lies
             SameSite = SameSiteMode.Strict,
             Path = "/api/auth",
             Expires = result.RefreshTokenExpiresUtc

@@ -56,10 +56,15 @@ public static class DbSeeder
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Runs left Queued/Running by a crash or restart can never finish; mark them failed.</summary>
-    public static async Task<int> FailOrphanedRunsAsync(AppDbContext db, DateTime nowUtc, CancellationToken ct = default)
+    /// <summary>
+    /// With the in-process scheduler, runs left Queued/Running by a crash or restart can never finish, so they
+    /// are marked failed. With Hangfire the jobs survive in Redis and get picked up again (another instance may
+    /// even be running them right now), so the rows are left alone.
+    /// </summary>
+    public static async Task<int> FailOrphanedRunsAsync(AppDbContext db, DateTime nowUtc, bool jobsAreDurable = false, CancellationToken ct = default)
     {
-        var stale = await db.Runs.Where(r => r.Status == RunStatus.Running).ToListAsync(ct);
+        if (jobsAreDurable) return 0;
+        var stale = await db.Runs.Where(r => r.Status == RunStatus.Running || r.Status == RunStatus.Queued).ToListAsync(ct);
         foreach (var r in stale) r.Fail("Service restarted while the run was in progress.", nowUtc);
         await db.SaveChangesAsync(ct);
         return stale.Count;

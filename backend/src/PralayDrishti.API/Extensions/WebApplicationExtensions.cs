@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Hangfire;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using PralayDrishti.API.Hubs;
@@ -15,6 +16,11 @@ public static class WebApplicationExtensions
     {
         await app.Services.InitializeDatabaseAsync(app.Configuration);
 
+        // behind a load balancer / ingress: real client IP (stored on refresh tokens) and scheme
+        app.UseForwardedHeaders(new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+        });
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseSwagger();
         app.UseSwaggerUI(c => c.DocumentTitle = "PralayDrishti API");

@@ -148,6 +148,18 @@ public class ApiTests
     }
 
     [DockerFact]
+    public async Task Refresh_cookie_is_secure_even_behind_a_tls_terminating_proxy()
+    {
+        // the test server speaks plain http, exactly like Kestrel behind a PaaS load balancer
+        var r = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login",
+            new { email = ApiFactory.AnalystEmail, password = ApiFactory.DemoPassword });
+
+        var cookie = r.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("pd_refresh="));
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [DockerFact]
     public async Task Analyst_full_flow_register_login_run_export_pdf()
     {
         var c = await ClientAs(ApiFactory.AnalystEmail);

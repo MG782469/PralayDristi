@@ -44,6 +44,22 @@ public class InProcessSchedulerTests
     {
         public readonly TaskCompletionSource<string> Done = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int Calls;
+        public int Active, MaxActive, Finished;
+    }
+
+    public sealed class SlowJob
+    {
+        private readonly Recorder _r;
+        public SlowJob(Recorder r) => _r = r;
+
+        public async Task Run()
+        {
+            int now = Interlocked.Increment(ref _r.Active);
+            lock (_r) _r.MaxActive = Math.Max(_r.MaxActive, now);
+            await Task.Delay(120);
+            Interlocked.Decrement(ref _r.Active);
+            if (Interlocked.Increment(ref _r.Finished) == 3) _r.Done.TrySetResult("all");
+        }
     }
 
     public sealed class TestJob
@@ -64,9 +80,10 @@ public class InProcessSchedulerTests
         var services = new ServiceCollection();
         services.AddSingleton<Recorder>();
         services.AddTransient<TestJob>();
+        services.AddTransient<SlowJob>();
         var sp = services.BuildServiceProvider();
         var scheduler = new InProcessJobScheduler(sp.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<InProcessJobScheduler>.Instance);
+            NullLogger<InProcessJobScheduler>.Instance, simulationWorkers: 1);
         return (scheduler, sp.GetRequiredService<Recorder>(), sp);
     }
 
@@ -78,6 +95,21 @@ public class InProcessSchedulerTests
         scheduler.Enqueue<TestJob>(j => j.Run("hello"));
         var result = await rec.Done.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal("hello", result);
+        await scheduler.StopAsync(default);
+        await sp.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task InProcess_simulations_queue_respects_worker_count()
+    {
+        // Redis down + "run atlas" queues a simulation per dam; they must not all run at once
+        var (scheduler, rec, sp) = Build();
+        await scheduler.StartAsync(default);
+        for (int i = 0; i < 3; i++) scheduler.Enqueue<SlowJob>(j => j.Run(), "simulations");
+
+        await rec.Done.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, rec.MaxActive);
         await scheduler.StopAsync(default);
         await sp.DisposeAsync();
     }

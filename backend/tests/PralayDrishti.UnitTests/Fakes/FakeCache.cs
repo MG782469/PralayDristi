@@ -7,6 +7,7 @@ namespace PralayDrishti.UnitTests.Fakes;
 public sealed class FakeCache : ICacheService
 {
     private readonly ConcurrentDictionary<string, string> _data = new();
+    public IEnumerable<string> Keys => _data.Keys;
 
     public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) =>
         Task.FromResult(_data.TryGetValue(key, out var json) ? JsonSerializer.Deserialize<T>(json) : default);

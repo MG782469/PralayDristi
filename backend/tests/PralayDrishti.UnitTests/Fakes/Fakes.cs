@@ -14,7 +14,8 @@ public sealed class FakeClock : IDateTimeProvider
 public sealed class FakeUow : IUnitOfWork
 {
     public int Saves { get; private set; }
-    public Task<int> SaveChangesAsync(CancellationToken ct = default) { Saves++; return Task.FromResult(1); }
+    public Action? OnSave { get; set; }
+    public Task<int> SaveChangesAsync(CancellationToken ct = default) { Saves++; OnSave?.Invoke(); return Task.FromResult(1); }
 }
 
 public sealed class FakeCurrentUser : ICurrentUserService

@@ -59,4 +59,41 @@ public class PersistenceTests
         var back = await db.Runs.SingleAsync(r => r.Id == run.Id);
         Assert.Null(back.DamId);
     }
+
+    private static async Task<(SimulationRun queued, SimulationRun running)> TwoInFlightRuns(AppDbContext db)
+    {
+        var queued = SimulationRun.Queue("q", "DamBreak", "{}", RunOrigin.User, DateTime.UtcNow);
+        var running = SimulationRun.Queue("r", "DamBreak", "{}", RunOrigin.User, DateTime.UtcNow);
+        running.Start(DateTime.UtcNow);
+        db.Runs.AddRange(queued, running);
+        await db.SaveChangesAsync();
+        return (queued, running);
+    }
+
+    [PostgresFact]
+    public async Task In_process_restart_fails_queued_and_running_runs()
+    {
+        // the in-process channel is gone after a restart: nothing will ever pick these up
+        await using var db = Fresh();
+        var (queued, running) = await TwoInFlightRuns(db);
+
+        int n = await DbSeeder.FailOrphanedRunsAsync(db, DateTime.UtcNow, jobsAreDurable: false);
+
+        Assert.Equal(2, n);
+        Assert.Equal(RunStatus.Failed, queued.Status);
+        Assert.Equal(RunStatus.Failed, running.Status);
+    }
+
+    [PostgresFact]
+    public async Task Hangfire_restart_leaves_runs_for_hangfire_to_resume()
+    {
+        await using var db = Fresh();
+        var (queued, running) = await TwoInFlightRuns(db);
+
+        int n = await DbSeeder.FailOrphanedRunsAsync(db, DateTime.UtcNow, jobsAreDurable: true);
+
+        Assert.Equal(0, n);
+        Assert.Equal(RunStatus.Queued, queued.Status);
+        Assert.Equal(RunStatus.Running, running.Status);
+    }
 }

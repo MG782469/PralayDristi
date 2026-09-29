@@ -78,8 +78,18 @@ public sealed class AuthService
         var (raw, newHash, exp) = _tokenService.CreateRefreshToken();
         token.Revoke(now, ip, "rotated", newHash);
         await _tokens.AddAsync(RefreshToken.Issue(user.Id, newHash, exp, now, ip), ct);
-        await _uow.SaveChangesAsync(ct);
+        // successor goes into the cache first: a parallel tab can see the "rotated" row the moment it
+        // commits, and if the grace entry isn't there yet it would look like reuse and kill the family
         await _cache.SetAsync(CacheKeys.RefreshGrace(hash), raw, GraceWindow, ct);
+        try
+        {
+            await _uow.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            await _cache.RemoveAsync(CacheKeys.RefreshGrace(hash), CancellationToken.None);
+            throw;
+        }
         return new AuthResult(access, accessExp, raw, exp, user.ToDto());
     }
 

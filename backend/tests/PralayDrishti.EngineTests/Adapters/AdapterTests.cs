@@ -68,6 +68,20 @@ public class AdapterTests : IDisposable
         Assert.True(root.GetProperty("impact").GetProperty("floodedAreaKm2").GetDouble() > 0);
     }
 
+    [Fact]
+    public void Run_detail_with_nan_serialises()
+    {
+        // arrival/peak fields are NaN where the flood never reaches; STJ throws on NaN by default,
+        // which would turn GET /api/runs/{id} into a 500
+        var series = new SeriesDto(new[] { 0.0, 60.0 }, new[] { double.NaN, 1.5 });
+
+        string json = JsonSerializer.Serialize(series, ResultStore.Json);
+
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("NaN", doc.RootElement.GetProperty("v")[0].GetString());
+        Assert.True(double.IsNaN(JsonSerializer.Deserialize<SeriesDto>(json, ResultStore.Json)!.V[0]));
+    }
+
     public void Dispose()
     {
         _sp.Dispose();
