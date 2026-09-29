@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.DependencyInjection;
@@ -93,5 +94,30 @@ public class InProcessSchedulerTests
         Assert.Equal(0, rec.Calls);
         await scheduler.StopAsync(default);
         await sp.DisposeAsync();
+    }
+}
+
+public class RedisNamespaceTests
+{
+    private static IConfiguration Config(params (string, string?)[] kv) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(kv.Select(p => new KeyValuePair<string, string?>(p.Item1, p.Item2))).Build();
+
+    [Fact]
+    public void Redis_namespace_follows_the_database_so_two_environments_never_share_keys()
+    {
+        var dev = BackgroundJobsSetup.RedisNamespace(Config(("ConnectionStrings:DefaultConnection", "Host=localhost;Database=pralaydrishti;Username=u")));
+        var test = BackgroundJobsSetup.RedisNamespace(Config(("ConnectionStrings:DefaultConnection", "Host=localhost;Database=pralaydrishti_api_test;Username=u")));
+
+        Assert.Equal("pralay:pralaydrishti:", dev);
+        Assert.NotEqual(dev, test);
+    }
+
+    [Fact]
+    public void Explicit_redis_instance_name_wins()
+    {
+        var ns = BackgroundJobsSetup.RedisNamespace(Config(
+            ("ConnectionStrings:DefaultConnection", "Host=h;Database=db"), ("Redis:InstanceName", "prod-a")));
+        Assert.Equal("pralay:prod-a:", ns);
     }
 }

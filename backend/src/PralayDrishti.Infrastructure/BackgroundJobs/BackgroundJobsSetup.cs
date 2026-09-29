@@ -10,6 +10,7 @@ using PralayDrishti.Application.Common.Abstractions;
 using PralayDrishti.Application.Common.Options;
 using PralayDrishti.Application.Jobs;
 using PralayDrishti.Infrastructure.Caching;
+using Npgsql;
 using StackExchange.Redis;
 
 namespace PralayDrishti.Infrastructure.BackgroundJobs;
@@ -22,8 +23,25 @@ public static class BackgroundJobsSetup
     /// Probes Redis once at startup (2 s). Up: Redis cache + Hangfire on Redis. Down: memory cache + in-process
     /// scheduler, and the API still starts - a laptop without Docker running must not be a dead demo.
     /// </summary>
+    /// <summary>
+    /// Key prefix for everything this deployment puts in Redis (cache and Hangfire). Two apps pointed at the
+    /// same Redis but different databases - dev and the integration tests, or two tenants - must not read each
+    /// other's cached rows or pick up each other's jobs. Defaults to the database name; Redis:InstanceName overrides.
+    /// </summary>
+    public static string RedisNamespace(IConfiguration config)
+    {
+        string? name = config["Redis:InstanceName"];
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            try { name = new NpgsqlConnectionStringBuilder(config.GetConnectionString("DefaultConnection")).Database; }
+            catch (ArgumentException) { name = null; }
+        }
+        return $"pralay:{(string.IsNullOrWhiteSpace(name) ? "default" : name)}:";
+    }
+
     public static IServiceCollection AddCachingAndJobs(this IServiceCollection services, IConfiguration config)
     {
+        string ns = RedisNamespace(config);
         services.AddMemoryCache();
         string redisCs = config.GetConnectionString("Redis") ?? "";
         IConnectionMultiplexer? mux = null;
@@ -46,7 +64,11 @@ public static class BackgroundJobsSetup
         if (mux != null)
         {
             services.AddSingleton(mux);
-            services.AddStackExchangeRedisCache(o => o.ConnectionMultiplexerFactory = () => Task.FromResult(mux));
+            services.AddStackExchangeRedisCache(o =>
+            {
+                o.ConnectionMultiplexerFactory = () => Task.FromResult(mux);
+                o.InstanceName = ns;
+            });
             services.AddSingleton<ICacheService>(sp => new ResilientCacheService(
                 sp.GetRequiredService<IDistributedCache>(), sp.GetRequiredService<IMemoryCache>(),
                 sp.GetRequiredService<ILogger<ResilientCacheService>>()));
@@ -56,7 +78,7 @@ public static class BackgroundJobsSetup
                 .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
                 .UseSimpleAssemblyNameTypeSerializer()
                 .UseRecommendedSerializerSettings()
-                .UseRedisStorage(mux, new RedisStorageOptions { Prefix = "pralay:hangfire:" }));
+                .UseRedisStorage(mux, new RedisStorageOptions { Prefix = ns + "hangfire:" }));
             // simulations are CPU heavy: their own queue with a small worker count, everything else on "default"
             services.AddHangfireServer(o =>
             {
