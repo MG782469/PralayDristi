@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, AlertTriangle, BarChart3, Crosshair, Database, Droplets, FlaskConical, Map as MapIcon, Mountain, Satellite } from 'lucide-react'
+import { Activity, AlertTriangle, BarChart3, Crosshair, Database, Droplets, FlaskConical, Loader2, LogOut, Map as MapIcon, Mountain, Satellite, Users } from 'lucide-react'
 import { get } from './api'
 import { useHub } from './hub'
+import { useAuth } from './auth'
+import LoginPage from './pages/LoginPage'
+import UsersPage from './pages/UsersPage'
 import SimulatePage from './pages/SimulatePage'
 import ResultsPage from './pages/ResultsPage'
 import NaturalDamPage from './pages/NaturalDamPage'
@@ -34,9 +37,18 @@ const nav = [
   { section: 'Trust' },
   { page: 'validation', label: 'Validation', icon: FlaskConical },
   { page: 'data', label: 'Data & system', icon: Database },
+  { page: 'users', label: 'Users', icon: Users, admin: true },
 ] as const
 
 export default function App() {
+  const { user, restoring } = useAuth()
+  if (restoring)
+    return <div className="login-screen"><Loader2 className="spin" aria-label="Restoring session" /></div>
+  return user ? <Shell /> : <LoginPage />
+}
+
+function Shell() {
+  const { user, logout, hasRole } = useAuth()
   const [route, setRoute] = useState<Route>(parseHash())
   const [system, setSystem] = useState<any>(null)
   const [newAlerts, setNewAlerts] = useState(0)
@@ -68,6 +80,7 @@ export default function App() {
     case 'lakes': content = <LakeWatchPage />; break
     case 'atlas': content = <AtlasPage />; break
     case 'data': content = <DataPage system={system} />; break
+    case 'users': content = hasRole('Admin') ? <UsersPage /> : <SimulatePage />; break
     default: content = <SimulatePage />
   }
 
@@ -81,7 +94,7 @@ export default function App() {
             <div className="brand-sub">Dam-break HADR decision support</div>
           </div>
         </div>
-        {nav.map((n, i) =>
+        {nav.filter(n => !('admin' in n) || hasRole('Admin')).map((n, i) =>
           'section' in n ? (
             <div key={i} className="nav-section">{n.section}</div>
           ) : (
@@ -94,6 +107,13 @@ export default function App() {
           ),
         )}
         <div className="nav-footer">
+          <div className="user-chip">
+            <div className="user-meta">
+              <div className="user-name">{user!.fullName || user!.email}</div>
+              <div><span className={`badge ${user!.role === 'Admin' ? 'red' : user!.role === 'Analyst' ? 'amber' : ''}`}>{user!.role}</span></div>
+            </div>
+            <button className="btn small ghost" onClick={logout} aria-label="Sign out" title="Sign out"><LogOut size={14} /></button>
+          </div>
           {system ? (
             <>
               <div><span className="dot" style={{ background: 'var(--ok)' }} />API online {system.offline && <span className="badge amber">air-gapped</span>}</div>

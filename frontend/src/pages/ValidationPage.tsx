@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, Loader2, Upload } from 'lucide-react'
 import { fmt, get, post, RunSummary } from '../api'
+import { useCanSimulate, viewerHint } from '../auth'
 import { Lines, rows } from '../components/Charts'
 
 export default function ValidationPage() {
+  const canSim = useCanSimulate()
   const [board, setBoard] = useState<any>(null)
   const [ritter, setRitter] = useState<any>(null)
   const [stoker, setStoker] = useState<any>(null)
@@ -105,7 +107,7 @@ export default function ValidationPage() {
           <div key={b.name} className="row spread">
             <b>{b.name}</b>
             {b.result ? <span className="mono">max-level RMSE {b.result.maxLevelRmse} m over {b.result.gauges.length} gauges</span> :
-              <button className="btn small" onClick={() => post(`/api/validation/benchmark/${b.name}`).then(() => get<any>('/api/validation/scoreboard').then(setBoard))}>Run</button>}
+              <button className="btn small" disabled={!canSim} title={canSim ? undefined : viewerHint} onClick={() => post(`/api/validation/benchmark/${b.name}`).then(() => get<any>('/api/validation/scoreboard').then(setBoard))}>Run</button>}
           </div>
         )) : null}
         {board?.malpassetHint && <div className="warn-box">{board.malpassetHint}</div>}
@@ -133,7 +135,7 @@ export default function ValidationPage() {
             </div>
           </div>
         </div>
-        <button className="btn primary" style={{ alignSelf: 'flex-start' }} onClick={compare} disabled={busy || !observed || !runId}>{busy && <Loader2 size={14} className="spin" />} Compare</button>
+        <button className="btn primary" style={{ alignSelf: 'flex-start' }} onClick={compare} disabled={busy || !canSim || !observed || !runId} title={canSim ? undefined : viewerHint}>{busy && <Loader2 size={14} className="spin" />} Compare</button>
         {cmp && (
           <div className="stats six">
             <div className="stat"><div className="label">CSI / IoU</div><div className="value">{cmp.csi}</div></div>

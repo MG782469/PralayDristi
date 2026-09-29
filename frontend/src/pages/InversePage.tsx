@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import { Crosshair, Loader2, Upload } from 'lucide-react'
 import { fmt, get, layerImage, post, RunDetail, RunSummary } from '../api'
+import { useCanSimulate, viewerHint } from '../auth'
 import MapView, { fitBounds, points, setGeoJson, setImage } from '../components/MapView'
 import { Lines } from '../components/Charts'
 
@@ -11,6 +12,7 @@ import { Lines } from '../components/Charts'
  *  - satellite shows this flood extent: how much was released upstream?
  */
 export default function InversePage({ runId }: { runId?: string }) {
+  const canSim = useCanSimulate()
   const [initialId, query] = (runId ?? '').split('?')
   const params = new URLSearchParams(query ?? '')
   const [runs, setRuns] = useState<RunSummary[]>([])
@@ -108,7 +110,7 @@ export default function InversePage({ runId }: { runId?: string }) {
             <div className="field"><label htmlFor="tn">Target name</label><input id="tn" type="text" value={targetName} onChange={e => setTargetName(e.target.value)} /></div>
             <div className="field"><label htmlFor="td">Critical depth (m)</label><input id="td" type="number" step={0.1} value={depth} onChange={e => setDepth(e.target.value)} /></div>
           </div>
-          <button className="btn primary" onClick={runThreshold} disabled={busy || !target || !id}>{busy ? <Loader2 size={14} className="spin" /> : null} Find threshold</button>
+          <button className="btn primary" onClick={runThreshold} disabled={busy || !canSim || !target || !id} title={canSim ? undefined : viewerHint}>{busy ? <Loader2 size={14} className="spin" /> : null} Find threshold</button>
           {result && (
             <div className="stack">
               <div className={result.found ? 'info-box' : 'warn-box'}>{result.message}</div>
@@ -130,7 +132,7 @@ export default function InversePage({ runId }: { runId?: string }) {
             <Upload size={13} /> Observed flood GeoJSON
             <input type="file" accept=".json,.geojson" hidden onChange={e => e.target.files?.[0] && loadObserved(e.target.files[0])} />
           </label>
-          <button className="btn primary" onClick={runFit} disabled={busy || !observed || !id}>Back-calculate release</button>
+          <button className="btn primary" onClick={runFit} disabled={busy || !canSim || !observed || !id} title={canSim ? undefined : viewerHint}>Back-calculate release</button>
           {fit && (
             <div className="stack">
               <div className="info-box">{fit.message}</div>

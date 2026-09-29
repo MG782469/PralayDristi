@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import { Bell, CheckCheck, FileCode, Loader2, Play, RadioTower, Upload, X } from 'lucide-react'
 import { fmt, get, post, upload } from '../api'
+import { useCanSimulate, viewerHint } from '../auth'
 import { useHub } from '../hub'
 import MapView, { points, setGeoJson } from '../components/MapView'
 import { go } from '../App'
@@ -16,6 +17,7 @@ type Alert = { id: string; runId: string; createdUtc: string; headline: string; 
 const stateColor: Record<string, string> = { New: 'blue', Estimating: 'amber', Simulating: 'amber', Alerted: 'red', Dismissed: 'gray', Failed: 'gray' }
 
 export default function LakeWatchPage() {
+  const canSim = useCanSimulate()
   const [lakes, setLakes] = useState<Lake[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [cap, setCap] = useState<string | null>(null)
@@ -96,14 +98,14 @@ export default function LakeWatchPage() {
           </p>
           <div className="row">
             <div className="field grow"><label htmlFor="da">Lake area (km²)</label><input id="da" type="number" step={0.05} value={demoArea} onChange={e => setDemoArea(e.target.value)} /></div>
-            <button className="btn accent" onClick={injectDetection} disabled={busy || !demoPoint} style={{ alignSelf: 'flex-end' }}>
+            <button className="btn accent" onClick={injectDetection} disabled={busy || !canSim || !demoPoint} title={canSim ? undefined : viewerHint} style={{ alignSelf: 'flex-end' }}>
               {busy ? <Loader2 size={14} className="spin" /> : <RadioTower size={14} />} Inject detection
             </button>
           </div>
           <div className="faint">{demoPoint ? `${demoPoint[1].toFixed(4)}, ${demoPoint[0].toFixed(4)}` : 'click the map to place the lake'}</div>
-          <label className="btn small" style={{ alignSelf: 'flex-start' }}>
+          <label className="btn small" style={{ alignSelf: 'flex-start' }} aria-disabled={!canSim}>
             <Upload size={13} /> Offline: before + after NDWI GeoTIFFs
-            <input type="file" accept=".tif,.tiff" multiple hidden onChange={e => ndwi(e.target.files)} />
+            <input type="file" accept=".tif,.tiff" multiple hidden disabled={!canSim} onChange={e => ndwi(e.target.files)} />
           </label>
           {msg && <div className="info-box">{msg}</div>}
         </div>
@@ -123,8 +125,8 @@ export default function LakeWatchPage() {
               {l.notes && l.state === 'Failed' && <div className="faint" style={{ color: '#fca5a5' }}>{l.notes}</div>}
               <div className="row" style={{ marginTop: 6 }}>
                 {l.runId && <button className="btn small" onClick={e => { e.stopPropagation(); go('results', l.runId!) }}>Open simulation</button>}
-                {!l.runId && l.state !== 'Dismissed' && <button className="btn small" onClick={e => { e.stopPropagation(); post(`/api/lakes/${l.id}/simulate`).then(load) }}><Play size={12} /> Simulate</button>}
-                {l.state !== 'Dismissed' && <button className="btn small ghost" onClick={e => { e.stopPropagation(); post(`/api/lakes/${l.id}/dismiss`).then(load) }}>Dismiss</button>}
+                {!l.runId && l.state !== 'Dismissed' && <button className="btn small" disabled={!canSim} onClick={e => { e.stopPropagation(); post(`/api/lakes/${l.id}/simulate`).then(load) }}><Play size={12} /> Simulate</button>}
+                {l.state !== 'Dismissed' && <button className="btn small ghost" disabled={!canSim} onClick={e => { e.stopPropagation(); post(`/api/lakes/${l.id}/dismiss`).then(load) }}>Dismiss</button>}
               </div>
             </div>
           ))}
@@ -144,7 +146,7 @@ export default function LakeWatchPage() {
               <div className="row" style={{ marginTop: 6 }}>
                 <button className="btn small" onClick={() => showCap(a.id)}><FileCode size={12} /> CAP XML</button>
                 <button className="btn small" onClick={() => go('results', a.runId)}>Run</button>
-                {!a.acknowledged && <button className="btn small ghost" onClick={() => post(`/api/alerts/${a.id}/ack`).then(load)}><CheckCheck size={12} /> Ack</button>}
+                {!a.acknowledged && <button className="btn small ghost" disabled={!canSim} onClick={() => post(`/api/alerts/${a.id}/ack`).then(load)}><CheckCheck size={12} /> Ack</button>}
               </div>
             </div>
           ))}

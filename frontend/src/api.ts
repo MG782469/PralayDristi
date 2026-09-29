@@ -18,7 +18,8 @@ export type Dam = {
   approximate: boolean
   notes: string
   source: string
-  cascadeWithJson?: string | null
+  cascadeWith: string[]
+  dykes?: number[][] | null
 }
 
 export type KeyNumbers = {
@@ -180,18 +181,79 @@ async function handle<T>(r: Response): Promise<T> {
   return (type.includes('json') ? r.json() : r.text()) as Promise<T>
 }
 
-export const get = <T,>(url: string) => fetch(url).then(r => handle<T>(r))
+// ---- auth plumbing ----------------------------------------------------------------------------
+// The access token lives only in memory; the refresh token is an HttpOnly cookie scoped to /api/auth,
+// so a page reload restores the session through refresh() without JS ever seeing the refresh token.
 
-export const post = <T,>(url: string, body?: unknown) =>
-  fetch(url, {
-    method: 'POST',
+export type Role = 'Viewer' | 'Analyst' | 'Admin'
+export type User = { id: string; email: string; fullName: string; role: Role; isActive: boolean; createdUtc: string; lastLoginUtc: string | null }
+export type AuthResult = { accessToken: string; accessTokenExpiresUtc: string; refreshToken: string; refreshTokenExpiresUtc: string; user: User }
+
+let accessToken: string | null = null
+let refreshing: Promise<AuthResult | null> | null = null
+const sessionListeners = new Set<(r: AuthResult | null) => void>()
+
+export const getAccessToken = () => accessToken
+
+/** Called by the auth context whenever the session starts, rotates or ends. */
+export function onSession(fn: (r: AuthResult | null) => void) {
+  sessionListeners.add(fn)
+  return () => { sessionListeners.delete(fn) }
+}
+
+export function setSession(r: AuthResult | null) {
+  accessToken = r?.accessToken ?? null
+  sessionListeners.forEach(fn => fn(r))
+}
+
+/** Single-flight: ten requests failing with 401 at once still cause exactly one refresh call. */
+export function refresh(): Promise<AuthResult | null> {
+  if (!refreshing) {
+    refreshing = fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+      .then(r => (r.ok ? (r.json() as Promise<AuthResult>) : null))
+      .catch(() => null)
+      .then(r => { setSession(r); return r })
+      .finally(() => { refreshing = null })
+  }
+  return refreshing
+}
+
+async function authFetch(url: string, init: RequestInit = {}, retry = true): Promise<Response> {
+  const headers = new Headers(init.headers)
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
+  const r = await fetch(url, { ...init, headers, credentials: 'include' })
+  if (r.status !== 401 || !retry || url.startsWith('/api/auth/')) return r
+  return (await refresh()) ? authFetch(url, init, false) : r
+}
+
+export const get = <T,>(url: string) => authFetch(url).then(r => handle<T>(r))
+
+const send = <T,>(method: string, url: string, body?: unknown) =>
+  authFetch(url, {
+    method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   }).then(r => handle<T>(r))
 
-export const del = (url: string) => fetch(url, { method: 'DELETE' }).then(r => handle<unknown>(r))
+export const post = <T,>(url: string, body?: unknown) => send<T>('POST', url, body)
+export const put = <T,>(url: string, body?: unknown) => send<T>('PUT', url, body)
 
-export const upload = <T,>(url: string, form: FormData) => fetch(url, { method: 'POST', body: form }).then(r => handle<T>(r))
+export const del = (url: string) => authFetch(url, { method: 'DELETE' }).then(r => handle<unknown>(r))
+
+export const upload = <T,>(url: string, form: FormData) => authFetch(url, { method: 'POST', body: form }).then(r => handle<T>(r))
+
+/** Exports need the bearer header, so a plain <a href download> no longer works. */
+export async function download(url: string) {
+  const r = await authFetch(url)
+  if (!r.ok) await handle(r)
+  const name = /filename\*?=(?:UTF-8'')?"?([^";]+)/i.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? url.split('/').pop()!
+  const href = URL.createObjectURL(await r.blob())
+  const a = Object.assign(document.createElement('a'), { href, download: decodeURIComponent(name) })
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(href), 10_000)
+}
 
 export const exportUrl = (runId: string, format: string) => `/api/runs/${runId}/export/${format}`
 export const layerImage = (runId: string, layer: string) => `/api/runs/${runId}/image/${layer}.png`

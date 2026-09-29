@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import { Loader2, PlayCircle, RotateCcw } from 'lucide-react'
 import { fmt, get, post } from '../api'
+import { useCanSimulate, viewerHint } from '../auth'
 import { useHub } from '../hub'
 import MapView, { points, setGeoJson } from '../components/MapView'
 import { go } from '../App'
 
 export default function AtlasPage() {
+  const canSim = useCanSimulate()
   const [board, setBoard] = useState<any[]>([])
   const [queued, setQueued] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
@@ -42,7 +44,7 @@ export default function AtlasPage() {
           Proof that the framework is general, not tuned for one valley. Add dams from CWC NRLD / India-WRIS on the Data page.
         </p>
         <div className="row">
-          <button className="btn primary" onClick={runAll} disabled={busy}>{busy ? <Loader2 size={14} className="spin" /> : <PlayCircle size={14} />} Run atlas for all dams</button>
+          <button className="btn primary" onClick={runAll} disabled={busy || !canSim} title={canSim ? undefined : viewerHint}>{busy ? <Loader2 size={14} className="spin" /> : <PlayCircle size={14} />} Run atlas for all dams</button>
           <button className="btn small" onClick={load}><RotateCcw size={13} /></button>
         </div>
         {queued != null && <div className="info-box">{queued} runs queued - the table fills in as they finish. Progress is on the <a href="#/results">Results</a> page.</div>}

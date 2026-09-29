@@ -247,3 +247,14 @@ pre.code { background: var(--bg); border: 1px solid var(--border); border-radius
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---- auth ---- */
+.login-screen { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: radial-gradient(ellipse at top, var(--panel-2), var(--bg) 70%); }
+.login-card { width: 100%; max-width: 400px; padding: 24px; gap: 18px; }
+.login-demo { justify-content: flex-start; text-align: left; }
+.error-box { border: 1px solid rgba(239, 68, 68, 0.45); background: var(--danger-bg); color: #fca5a5; border-radius: var(--radius); padding: 10px 12px; font-size: 13px; }
+.user-chip { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border); }
+.user-meta { min-width: 0; }
+.user-name { color: var(--text); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+label.btn[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+.export-item { width: 100%; text-align: left; font: inherit; color: inherit; }

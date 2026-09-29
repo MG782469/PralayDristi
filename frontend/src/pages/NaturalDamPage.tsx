@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import { Check, Eraser, Loader2, PenLine, Play, Satellite, Undo2 } from 'lucide-react'
 import { fmt, post, RunSummary, ScenarioSpec, upload } from '../api'
+import { useCanSimulate, viewerHint } from '../auth'
 import MapView, { points, removeSource, setGeoJson } from '../components/MapView'
 import ScenarioOptions, { defaultSpec } from '../components/ScenarioOptions'
 import { Lines } from '../components/Charts'
@@ -10,6 +11,7 @@ import { go } from '../App'
 type Mode = 'landslide' | 'transboundary'
 
 export default function NaturalDamPage() {
+  const canSim = useCanSimulate()
   const [mode, setMode] = useState<Mode>('landslide')
   const mapRef = useRef<MlMap | null>(null)
 
@@ -175,7 +177,7 @@ export default function NaturalDamPage() {
                 <span className="hint">if the lake is still filling</span>
               </div>
             </div>
-            <button className="btn block" onClick={analyze} disabled={busy || verts.length < 3}>
+            <button className="btn block" onClick={analyze} disabled={busy || !canSim || verts.length < 3} title={canSim ? undefined : viewerHint}>
               {busy ? <Loader2 size={15} className="spin" /> : null} Estimate lake from DEM
             </button>
 
@@ -201,7 +203,7 @@ export default function NaturalDamPage() {
             {verts.length >= 3 && (
               <>
                 <ScenarioOptions spec={spec} onChange={setSpec} />
-                <button className="btn primary block" onClick={simulate} disabled={busy}><Play size={15} /> Simulate outburst flood</button>
+                <button className="btn primary block" onClick={simulate} disabled={busy || !canSim} title={canSim ? undefined : viewerHint}><Play size={15} /> Simulate outburst flood</button>
               </>
             )}
           </>
@@ -235,7 +237,7 @@ export default function NaturalDamPage() {
                 <span className="hint">computes the area around the clicked point</span>
               </div>
             </div>
-            <button className="btn primary block" onClick={estimate} disabled={busy || !point || (!area && !alt)}>
+            <button className="btn primary block" onClick={estimate} disabled={busy || !canSim || !point || (!area && !alt)} title={canSim ? undefined : viewerHint}>
               {busy ? <Loader2 size={15} className="spin" /> : null} Estimate volume
             </button>
             {res && (

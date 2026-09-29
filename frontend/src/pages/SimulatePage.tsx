@@ -3,6 +3,7 @@ import type { Map as MlMap } from 'maplibre-gl'
 import maplibregl from 'maplibre-gl'
 import { Loader2, MapPin, Play, Search } from 'lucide-react'
 import { Dam, get, post, RunSummary, ScenarioSpec } from '../api'
+import { useCanSimulate, viewerHint } from '../auth'
 import MapView, { points, setGeoJson } from '../components/MapView'
 import ScenarioOptions, { defaultSpec } from '../components/ScenarioOptions'
 import { go } from '../App'
@@ -15,6 +16,7 @@ const categoryColor: Record<string, string> = {
 }
 
 export default function SimulatePage() {
+  const canSim = useCanSimulate()
   const [dams, setDams] = useState<Dam[]>([])
   const [filter, setFilter] = useState('')
   const [selected, setSelected] = useState<Dam | null>(null)
@@ -204,10 +206,10 @@ export default function SimulatePage() {
                   <input id="bw" type="number" placeholder="empirical" value={spec.dam.breachWidthM ?? ''} onChange={e => setDam({ breachWidthM: e.target.value === '' ? null : +e.target.value })} />
                 </div>
               </div>
-              {selected?.cascadeWithJson && (
+              {!!selected?.cascadeWith?.length && (
                 <label className="check">
                   <input type="checkbox" checked={cascade} onChange={e => { setCascade(e.target.checked); pickDam(selected, e.target.checked) }} />
-                  Cascade failure: include downstream dam(s) {JSON.parse(selected.cascadeWithJson).join(', ')}
+                  Cascade failure: include downstream dam(s) {selected.cascadeWith.join(', ')}
                 </label>
               )}
               {spec.mode === 'Cascade' && (
@@ -218,7 +220,7 @@ export default function SimulatePage() {
             <ScenarioOptions spec={spec} onChange={setSpec} />
 
             {error && <div className="alert-box">{error}</div>}
-            <button className="btn primary block" onClick={run} disabled={busy}>
+            <button className="btn primary block" onClick={run} disabled={busy || !canSim} title={canSim ? undefined : viewerHint}>
               {busy ? <Loader2 size={16} className="spin" /> : <Play size={16} />} Run simulation
             </button>
             <p className="faint">

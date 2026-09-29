@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Map as MlMap } from 'maplibre-gl'
 import maplibregl from 'maplibre-gl'
 import { AlertTriangle, Bell, Download, Loader2, Pause, Play, RotateCcw, Trash2, X } from 'lucide-react'
-import { del, exportUrl, fmt, get, layerImage, post, RunDetail, RunSummary } from '../api'
+import { del, download, exportUrl, fmt, get, layerImage, post, RunDetail, RunSummary } from '../api'
+import { useCanSimulate } from '../auth'
 import { useHub } from '../hub'
 import MapView, { fitBounds, points, removeSource, setGeoJson, setImage } from '../components/MapView'
 import { Bars, Lines, Profile, rows } from '../components/Charts'
@@ -108,6 +109,7 @@ function RunView({ id }: { id: string }) {
 }
 
 function Pending({ s, onChange }: { s: RunSummary; onChange: () => void }) {
+  const canSim = useCanSimulate()
   const steps = ['Fetching terrain', 'Loading exposure', 'Preparing', 'SPH near field', '2D far field', 'Impact', 'Ensemble', 'Saving']
   const cur = steps.findIndex(x => s.stage.startsWith(x))
   return (
@@ -126,10 +128,10 @@ function Pending({ s, onChange }: { s: RunSummary; onChange: () => void }) {
         {s.status === 'Failed' && <div className="alert-box">{s.error}</div>}
         <div className="row">
           {(s.status === 'Running' || s.status === 'Queued') && (
-            <button className="btn danger small" onClick={() => post(`/api/runs/${s.id}/cancel`).then(onChange)}><X size={13} /> Cancel</button>
+            <button className="btn danger small" disabled={!canSim} onClick={() => post(`/api/runs/${s.id}/cancel`).then(onChange)}><X size={13} /> Cancel</button>
           )}
           {(s.status === 'Failed' || s.status === 'Cancelled') && (
-            <button className="btn small" onClick={() => post<RunSummary>(`/api/runs/${s.id}/rerun`).then(r => go('results', r.id))}><RotateCcw size={13} /> Run again</button>
+            <button className="btn small" disabled={!canSim} onClick={() => post<RunSummary>(`/api/runs/${s.id}/rerun`).then(r => go('results', r.id))}><RotateCcw size={13} /> Run again</button>
           )}
         </div>
       </div>
@@ -140,6 +142,7 @@ function Pending({ s, onChange }: { s: RunSummary; onChange: () => void }) {
 const tabs = ['Overview', 'Impact', 'Hydraulics', 'SPH', 'Ensemble', 'Export', 'Log'] as const
 
 function RunDetailView({ d, reload }: { d: RunDetail; reload: () => void }) {
+  const canSim = useCanSimulate()
   const [tab, setTab] = useState<(typeof tabs)[number]>('Overview')
   const [layer, setLayer] = useState<Layer>('depth')
   const [opacity, setOpacity] = useState(0.85)
@@ -224,8 +227,8 @@ function RunDetailView({ d, reload }: { d: RunDetail; reload: () => void }) {
         <div className="row spread">
           <a href="#/results" className="faint">&larr; all runs</a>
           <div className="row">
-            <button className="btn small" onClick={() => post<RunSummary>(`/api/runs/${id}/rerun`).then(r => go('results', r.id))} title="Run again"><RotateCcw size={13} /></button>
-            <button className="btn small danger" title="Delete run" onClick={() => confirm('Delete this run and its files?') && del(`/api/runs/${id}`).then(() => go('results'))}><Trash2 size={13} /></button>
+            <button className="btn small" disabled={!canSim} onClick={() => post<RunSummary>(`/api/runs/${id}/rerun`).then(r => go('results', r.id))} title="Run again"><RotateCcw size={13} /></button>
+            <button className="btn small danger" disabled={!canSim} title="Delete run" onClick={() => confirm('Delete this run and its files?') && del(`/api/runs/${id}`).then(() => go('results'))}><Trash2 size={13} /></button>
           </div>
         </div>
         <div>
@@ -537,23 +540,24 @@ const exportsList = [
 ]
 
 function ExportTab({ d, reload }: { d: RunDetail; reload: () => void }) {
+  const canSim = useCanSimulate()
   const [msg, setMsg] = useState<string | null>(null)
   const id = d.summary.id
   const wms = `${window.location.origin}/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`
   return (
     <div className="stack">
       {exportsList.map(e => (
-        <a key={e.f} className="list-item row spread" href={exportUrl(id, e.f)} download style={{ textDecoration: 'none', color: 'inherit' }}>
+        <button key={e.f} className="list-item row spread export-item" onClick={() => download(exportUrl(id, e.f)).catch(err => setMsg(err.message))}>
           <div><b>{e.label}</b><div className="faint">{e.desc}</div></div>
           <Download size={16} />
-        </a>
+        </button>
       ))}
       <div className="card stack">
         <h3>Raise alert</h3>
         <p className="faint">Creates a CAP 1.2 alert (English + Hindi) from this run. Status defaults to <b>Exercise</b>; only switch to Actual for a real event.</p>
         <div className="row">
-          <button className="btn accent" onClick={() => post<any>(`/api/runs/${id}/alert?status=Exercise`).then(a => setMsg(a.headline)).catch(e => setMsg(e.message))}><Bell size={14} /> Exercise alert</button>
-          <button className="btn danger" onClick={() => confirm('Issue an ACTUAL alert? This is meant for real events only.') &&
+          <button className="btn accent" disabled={!canSim} onClick={() => post<any>(`/api/runs/${id}/alert?status=Exercise`).then(a => setMsg(a.headline)).catch(e => setMsg(e.message))}><Bell size={14} /> Exercise alert</button>
+          <button className="btn danger" disabled={!canSim} onClick={() => confirm('Issue an ACTUAL alert? This is meant for real events only.') &&
             post<any>(`/api/runs/${id}/alert?status=Actual`).then(a => setMsg(a.headline)).catch(e => setMsg(e.message))}>Actual alert</button>
         </div>
         {msg && <div className="info-box">{msg} - see <a href="#/lakes">Lake watch & alerts</a></div>}
