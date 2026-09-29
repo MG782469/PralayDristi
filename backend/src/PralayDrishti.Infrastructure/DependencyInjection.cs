@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PralayDrishti.Application.Common.Abstractions;
 using PralayDrishti.Domain.Interfaces;
+using PralayDrishti.Infrastructure.BackgroundJobs;
 using PralayDrishti.Infrastructure.Identity;
 using PralayDrishti.Infrastructure.Persistence;
 using PralayDrishti.Infrastructure.Persistence.Repositories;
@@ -17,6 +18,7 @@ public static partial class DependencyInjection
     {
         services.AddPersistence(config, env);
         services.AddIdentityServices(config);
+        services.AddCachingAndJobs(config);
         return services;
     }
 

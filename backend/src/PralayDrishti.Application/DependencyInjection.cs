@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using PralayDrishti.Application.Common.Behaviors;
+using PralayDrishti.Application.Jobs;
 using PralayDrishti.Application.Services;
 
 namespace PralayDrishti.Application;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         });
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
         services.AddScoped<AuthService>();
+        services.AddTransient<RefreshTokenCleanupJob>();
 
         return services;
     }
